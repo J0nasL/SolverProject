@@ -1,2 +1,4 @@
 # Project exclude paths
+*.pem
+*.txt
 /out/
