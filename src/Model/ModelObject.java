@@ -3,35 +3,38 @@ package Model;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
-public abstract class ModelObject{
+public abstract class ModelObject implements Comparable<ModelObject> {
     private final List<Listener<ModelObject, String>> listeners = new LinkedList<>();
     private ArrayList<ModelObject> children = new ArrayList<>();
     private boolean hasChildren = false;
     private final String id;
     private String name;
 
-    protected ModelObject(String id, String name){
-        this.id=id;
-        this.name=name;
+    protected ModelObject(String id, String name) {
+        this.id = id;
+        this.name = name;
     }
 
     /**
      * Returns the name of this object
      */
-    public String getName(){
+    public String getName() {
         return name;
     }
 
     /**
      * Sets the name of this object
      */
-    public void setName(String name){this.name=name;}
+    public void setName(String name) {
+        this.name = name;
+    }
 
     /**
      * Returns the ID of this object
      */
-    public String getID(){
+    public String getID() {
         return id;
     }
 
@@ -62,11 +65,12 @@ public abstract class ModelObject{
      * Returns a string representation of the given instance
      */
     @Override
-    public String toString(){
-        StringBuilder res= new StringBuilder("ModelObject(id:" + id + ", name:" + name + ", children:{");
-        for (int i=0; i<children.size();i++) {
+    public String toString() {
+        StringBuilder res = new StringBuilder("ModelObject(id:" + id + ", name:" + name + ", children:{");
+        for (int i = 0; i < children.size(); i++) {
             res.append(children.get(i).toString());
-            if(i!=children.size()-1){
+
+            if (i != children.size() - 1) {
                 res.append(", ");
             }
         }
@@ -88,30 +92,36 @@ public abstract class ModelObject{
      *
      * @param o1 Instance to get data from
      */
-    public void mergeModel(ModelObject o1){
+    public void mergeModel(ModelObject o1) {
+        Objects.requireNonNull(o1);
         //ids must be the same
-        assert (o1.id!=null && this.id!=null);
+        assert (o1.id != null && this.id != null);
         assert (o1.id.equals(this.id));
 
         //inherit the shorter name
-        if (o1.name!=null){
-            if(o1.name.length()<this.name.length()){
-                this.name=o1.name;
+        if (o1.name != null) {
+            if (o1.name.length() < this.name.length()) {
+                this.name = o1.name;
             }
         }
         //merge new children
-        for (ModelObject child:o1.children){
-            if(!this.children.contains(child)){
+        for (ModelObject child : o1.children) {
+            if (!this.children.contains(child)) {
                 addChild(child);
             }
         }
+    }
+
+    public int compareTo(ModelObject other) {
+        assert (other != null);
+        return id.compareTo(other.id);
     }
 
     public void addListener(Listener<ModelObject, String> listener) {
         this.listeners.add(listener);
     }
 
-    public void testChange(){
-        notifyListeners("test change on "+ this);
+    public void testChange() {
+        notifyListeners("test change on " + this);
     }
 }

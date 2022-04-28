@@ -3,7 +3,7 @@ package Model;
 /**
  * Represents a vendor with at least one Menu
  */
-public class Vendor extends ModelObject implements Comparable<Vendor> {
+public class Vendor extends ModelObject {
 
     private Boolean isOpen=null;
     private String currentMenuID = null;
@@ -57,7 +57,7 @@ public class Vendor extends ModelObject implements Comparable<Vendor> {
 
     @Override
     public String toString() {
-        return "Vendor(isOpen(): " + isOpen() + ", currentMenuID:" + currentMenuID + ", "+ super.toString() + ")";
+        return "Vendor(isOpen(): " + isOpen + ", currentMenuID:" + currentMenuID + ", menuLocationID:"+ menuLocationID + ", " + super.toString() + ")";
     }
 
     @Override
@@ -77,10 +77,5 @@ public class Vendor extends ModelObject implements Comparable<Vendor> {
         if(this.menuLocationID==null){
             this.menuLocationID=v.menuLocationID;
         }
-    }
-
-    @Override
-    public int compareTo(Vendor other) {
-        return getID().compareTo(other.getID());
     }
 }

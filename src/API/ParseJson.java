@@ -8,22 +8,20 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 
 public class ParseJson {
-    public static Vendor parseMain(HttpResponse<String> response, String vendorID){
+    public static Vendor parseMain(HttpResponse<String> response){
         if (response.statusCode() == Connection.OK_STATUS) {
             JSONObject body = new JSONObject(response.body());
 
             String[] conceptData = parseCommonData(body);
             String name = conceptData[0];
-            //String vendorID=conceptData[1]; //vendor id is already provided
-            String menuID = conceptData[2];
-
-
+            String vendorID=conceptData[1];
+            String menuLocID = conceptData[2];
 
             //TODO check if property isAsapOrderDisabled relates to high demand
 
-            Vendor vendor = ModelFactory.makeVendor(vendorID, name, new ArrayList<>());
+            Vendor vendor = ModelFactory.makeVendor(vendorID, name, null);
             vendor.setName(name);
-            vendor.setCurrentMenuID(menuID);
+            vendor.menuLocationID=menuLocID;
 
             return vendor;
         }
@@ -44,9 +42,9 @@ public class ParseJson {
                 String vendorID = conceptData[1];
                 String menuID = conceptData[2];
 
-                Menu cur_menu = ModelFactory.makeMenu(menuID, null, new ArrayList<>());
+                Menu thisMenu = ModelFactory.makeMenu(menuID, null, null);
                 ArrayList<Menu> menus = new ArrayList<>();
-                menus.add(cur_menu);
+                menus.add(thisMenu);
 
                 //get whether this vendor is currently available
                 JSONObject availableAt = cur_vendor.getJSONObject("availableAt");
@@ -75,7 +73,7 @@ public class ParseJson {
             JSONArray body = new JSONArray(response.body());
 
             JSONObject info = body.getJSONObject(0);
-            String currentMenuID = info.getString("id");
+            String currentMenuLocID = info.getString("id");
 
             String vendorName = info.getJSONObject("conceptOptions").getString("displayText");
             boolean isOpen = info.getBoolean("availableNow");
@@ -117,7 +115,7 @@ public class ParseJson {
             }
             Vendor v = ModelFactory.makeVendor(vendorID, vendorName, menus);
             v.setOpen(isOpen);
-            v.menuLocationID = currentMenuID;
+            v.menuLocationID = currentMenuLocID;
             return v;
         }
         return null;
@@ -129,8 +127,7 @@ public class ParseJson {
      * @param vendorData object representing a vendor
      * @return array of [vendor name, vendor id, menu id]
      */
-    public static String[] parseCommonData(JSONObject vendorData) {
-        //TODO make this private once same method in API is removed
+    private static String[] parseCommonData(JSONObject vendorData) {
         JSONArray conceptInfo = vendorData.getJSONArray("conceptInfo");
         JSONObject concept = conceptInfo.getJSONObject(0);
         String name = concept.getString("onDemandDisplayText"); //get name
@@ -149,4 +146,17 @@ public class ParseJson {
 
         return new String[]{name, vendorID, menuID};
     }
+
+    public static String parseMenuID(HttpResponse<String> response){
+        if (response.statusCode() == Connection.OK_STATUS) {
+            JSONArray body = new JSONArray(response.body());
+            JSONObject info= body.getJSONObject(0);
+
+            String menuID=info.getString("id");
+            return menuID;
+
+        }
+        return null;
+    }
+
 }

@@ -3,8 +3,6 @@ package CLI;
 import API.API;
 import Model.*;
 import Storage.Storage;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,12 +59,20 @@ public class CLI implements Listener<ModelObject, String>{
             }
             System.out.println("Showing data for " + v.getName());
 
-            //TODO find a way to merge vendor objects
-            //from multiple method calls
             Vendor data=api.getVendorMain(v.getID());
             if (data != null) {
-                data=api.getVendorConcepts(data.getID());
-                System.out.println(data);
+                v.mergeModel(data);
+                Vendor concept=api.getVendorConcepts(v.getID());
+                if (concept!=null) {
+                    v.mergeModel(concept);
+
+                    v.setCurrentMenuID(api.getCurMenuID(v.getID()));
+                    System.out.println(v);
+                    MenuCategory chosenCategory=showMenuOptions(v,1);
+                    System.out.println("Showing data for "+chosenCategory.getName());
+
+
+                }
             }
 
             //for now, break
@@ -124,8 +130,8 @@ public class CLI implements Listener<ModelObject, String>{
         }
 
         vendors.sort(Vendor::compareTo);
-        ArrayList<Vendor> openVendors = new ArrayList<>();
-        ArrayList<Vendor> closedVendors = new ArrayList<>();
+        ArrayList<ModelObject> openVendors = new ArrayList<>();
+        ArrayList<ModelObject> closedVendors = new ArrayList<>();
         for (Vendor vendor : vendors) {
             if (vendor.isOpen()) {
                 openVendors.add(vendor);
@@ -134,9 +140,9 @@ public class CLI implements Listener<ModelObject, String>{
             }
         }
         System.out.println("Open vendors:");
-        vendorPrint(openVendors, numberOffset);
+        objectPrint(openVendors, numberOffset);
         System.out.println("\nClosed vendors:");
-        vendorPrint(closedVendors, numberOffset + openVendors.size());
+        objectPrint(closedVendors, numberOffset + openVendors.size());
 
         while (true) {
             int res = Choice.chooseInt("\nChoose a vendor (" + Choice.ERROR_INT + " to exit):");
@@ -145,29 +151,52 @@ public class CLI implements Listener<ModelObject, String>{
             }
             res -= numberOffset;
             if (res < openVendors.size()) {
-                return openVendors.get(res);
+                return (Vendor) openVendors.get(res);
             } else if (res < openVendors.size() + closedVendors.size()) {
                 res -= openVendors.size();
-                return closedVendors.get(res);
+                return (Vendor) closedVendors.get(res);
             }
         }
     }
 
-    private void vendorPrint(ArrayList<Vendor> vendors, int numberOffset) {
-        if (vendors.size() == 0) {
+    private void objectPrint(ArrayList<ModelObject> objects, int numberOffset) {
+        if (objects.size() == 0) {
             System.out.println("none");
         } else {
-            for (int i = 0; i < vendors.size(); i++) {
-                System.out.println(i + numberOffset + ": " + vendors.get(i).getName());
+            for (int i = 0; i < objects.size(); i++) {
+                System.out.println(i + numberOffset + ": " + objects.get(i).getName());
             }
         }
     }
 
-    private void menuPrint(Menu m){
-        System.out.println("Menu categories:");
-        for (ModelObject cat: m.getChildren()) {
-            MenuCategory category= (MenuCategory) cat;
-            System.out.println("\t"+category);
+    /**
+     * Gets a list of menu categories, lets the user choose one
+     *
+     * @return chosen category
+     */
+    private MenuCategory showMenuOptions(Vendor vendor, int numberOffset) {
+        //TODO make numberOffset a static final global somewhere
+        Menu curMenu=vendor.getCurrentMenu();
+        System.out.println("Current menu: "+curMenu);
+        if (curMenu == null) {
+            return null;
+        }
+        ArrayList<ModelObject> categories =curMenu.getChildren();
+        categories.sort(ModelObject::compareTo);
+        //TODO sort alphabetically, not by ID
+
+        System.out.println("Categories:");
+        objectPrint(categories,numberOffset);
+
+        while (true) {
+            int res = Choice.chooseInt("\nChoose a category (" + Choice.ERROR_INT + " to exit):");
+            if (res == Choice.ERROR_INT) {
+                return null;
+            }
+            res -= numberOffset;
+            if (res < categories.size() && res>=0) {
+                return (MenuCategory) categories.get(res);
+            }
         }
     }
 

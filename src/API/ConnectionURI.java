@@ -45,8 +45,8 @@ public class ConnectionURI {
     }
 
     private void populateURIs() {
-        locations = "/api/sites/" + businessID; //tenantID can actually be replaced with any string
-        //
+        //TODO make a separate locations variable specifically for 1312 document
+        locations = "/api/sites/" + businessID;
         locationMain = locations; //add the vendor id
         locationConcepts = locations + "/" + businessID + "/concepts/"; //add the vendor id
         menuAddon = "/menus/";

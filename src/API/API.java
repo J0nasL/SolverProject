@@ -86,8 +86,12 @@ public class API {
     }
 
     public static API getInstance(String token) {
-        String[] res = getConfig(token)[0];
-        return new API(token, res[0], res[1]);
+        String[][] res=getConfig(token);
+        if (res!=null) {
+            String[] ids = res[0];
+            return new API(token, ids[0], ids[1]);
+        }
+        return null;
     }
 
     //Instance methods
@@ -124,7 +128,7 @@ public class API {
         try {
             for (int i = 0; i < threads.size(); i++) {
                 threads.get(i).join();
-                vendors.add(ParseJson.parseMain(connections.get(i).response, vendorIDs[i]));
+                vendors.add(ParseJson.parseMain(connections.get(i).response));
             }
             return vendors;
         } catch (InterruptedException e) {
@@ -145,7 +149,7 @@ public class API {
                 HttpRequest.BodyPublishers.noBody());
         //TODO
         //i forgot why this comment is here
-        return ParseJson.parseMain(response, vendorID);
+        return ParseJson.parseMain(response);
     }
 
     /**
@@ -159,26 +163,44 @@ public class API {
         return ParseJson.parseVendorConcept(response,vendorID);
     }
 
-    public void getMenu(Vendor vendor) {
-        //get the current menu from the current location id
-        //OnDemand is weird because it has a separate id to go to in order to get the current menu
-        //but this id varies by vendor
-        String menuID = vendor.menuLocationID;
-        HttpResponse<String> response = connection.post(ConnectionURI.getURI(uri.locationConcepts + vendor.getID() + uri.menuAddon + menuID), headers,
+    private JSONArray getPassableMenuData(String vendorID){
+        //TODO this is an unnecessary extra call to concept page, find a way to reduce calls
+        HttpResponse<String> response = connection.post(ConnectionURI.getURI(uri.locationConcepts + vendorID), headers,
                 HttpRequest.BodyPublishers.ofString("{}"));
-        //TODO
+
+        if(response.statusCode()==Connection.OK_STATUS) {
+            return new JSONArray(response.body());
+        }
+        return null;
     }
 
-    /**
-     * Parses data shared by the locations and vendor main api pages
-     *
-     * @param vendorData object representing a vendor
-     * @return array of [vendor name, vendor id, menu id]
-     */
-    private String[] parseCommonData(JSONObject vendorData) {
-        //TODO: remove this method once all methods
-        //calling this once are moved to ParseJson
-        return ParseJson.parseCommonData(vendorData);
+    public String getCurMenuID(String vendorID){
+        JSONObject data=getPassableMenuData(vendorID).getJSONObject(0);
+        if (data==null){
+            return null;
+        }
+
+        String menuLocationID=data.getString("id");
+
+        JSONArray menus=data.getJSONArray("menus");
+        JSONArray schedules=data.getJSONArray("schedule");
+        JSONObject body=new JSONObject();
+        body.put("menus",menus);
+        body.put("schedule",schedules);
+        //TODO figure out how to put JSON directly into body without having
+        //to convert to string, since it will probably be converted back to JSON by HttpClient
+        String bodyStr=body.toString();
+        //4 other key,value pairs to consider adding if the server returns a 500 error
+
+        HttpResponse<String> response = connection.post(ConnectionURI.getURI(uri.locationConcepts + vendorID + uri.menuAddon + menuLocationID), headers,
+                HttpRequest.BodyPublishers.ofString(bodyStr));
+
+        return ParseJson.parseMenuID(response);
+    }
+
+    public void getItems(String vendorID, Menu m){
+        //TODO refactor all instance methods to take Vendor instead of vendorID?
+
     }
 
 }
