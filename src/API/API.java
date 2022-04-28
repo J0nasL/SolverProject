@@ -81,6 +81,10 @@ public class API {
         return null;
     }
 
+    public String[][] getConfig() {
+        return getConfig(token);
+    }
+
     public static API getInstance(String token) {
         String[] res = getConfig(token)[0];
         return new API(token, res[0], res[1]);
@@ -99,42 +103,32 @@ public class API {
      */
     public ArrayList<Vendor> getLocations() {
         HttpResponse<String> response = connection.get(ConnectionURI.getURI(uri.locations), headers);
+        return ParseJson.parseLocations(response);
+    }
 
-        if (response.statusCode() == Connection.OK_STATUS) {
-            JSONArray json = new JSONArray(response.body());
+    public ArrayList<Vendor> getLocationsIndividually(String[] vendorIDs) {
+        //TODO change this to access concepts, because main page has no isOpen
+        //if the result is an error, the vendor is not open
+        ArrayList<Thread> threads = new ArrayList<>();
+        ArrayList<RunnableConnection> connections = new ArrayList<>();
 
-            ArrayList<Vendor> vendors = new ArrayList<>();
-            for (Object i : json) {
-                //for each vendor:
-                JSONObject cur_vendor = (JSONObject) i;
-
-                String[] conceptData = parseCommonData(cur_vendor);
-                String name = conceptData[0];
-                String vendorID = conceptData[1];
-                String menuID = conceptData[2];
-
-                Menu cur_menu = ModelFactory.makeMenu(menuID, null, new ArrayList<>());
-                ArrayList<Menu> menus = new ArrayList<>();
-                menus.add(cur_menu);
-
-                //get whether this vendor is currently available
-                JSONObject availableAt = cur_vendor.getJSONObject("availableAt");
-                boolean isAvailable = availableAt.getBoolean("availableNow");
-
-                boolean conceptsAvailable=false; //assume closed if unable to parse
-                if (availableAt.has("conceptsAvailableNow")){
-                    conceptsAvailable = availableAt.getBoolean("conceptsAvailableNow");
-                } else {
-                    System.out.println("Unable to parse concept for "+name+":\n"+availableAt.toString());
-                }
-                //boolean isAvailable=cur_vendor.getBoolean("storeAvailabeNow"); //this is always true for some reason
-
-                //TODO: figure out how to handle available vs concepts available
-                Vendor v = ModelFactory.makeVendor(vendorID, name, menus);
-                v.setOpen(isAvailable && conceptsAvailable);
-                vendors.add(v);
+        for (String vendorID : vendorIDs) {
+            RunnableConnection c = new RunnableConnection(RunnableConnection.method.POST, ConnectionURI.getURI(uri.locationMain + "/" + vendorID), headers,
+                    HttpRequest.BodyPublishers.noBody());
+            Thread t = new Thread(c);
+            connections.add(c);
+            threads.add(t);
+            t.start();
+        }
+        ArrayList<Vendor> vendors = new ArrayList<>();
+        try {
+            for (int i = 0; i < threads.size(); i++) {
+                threads.get(i).join();
+                vendors.add(ParseJson.parseMain(connections.get(i).response, vendorIDs[i]));
             }
             return vendors;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
         return null;
     }
@@ -150,24 +144,8 @@ public class API {
         HttpResponse<String> response = connection.post(ConnectionURI.getURI(uri.locationMain + "/" + vendorID), headers,
                 HttpRequest.BodyPublishers.noBody());
         //TODO
-
-        if (response.statusCode() == Connection.OK_STATUS) {
-            JSONObject body = new JSONObject(response.body());
-
-            String[] conceptData = parseCommonData(body);
-            String name = conceptData[0];
-            //String vendorID=conceptData[1]; //vendor id is already provided
-            String menuID = conceptData[2];
-
-            //TODO check if property isAsapOrderDisabled relates to high demand
-
-            Vendor vendor = ModelFactory.makeVendor(vendorID, name, new ArrayList<>());
-            vendor.setName(name);
-            vendor.setCurrentMenuID(menuID);
-
-            return vendor;
-        }
-        return null;
+        //i forgot why this comment is here
+        return ParseJson.parseMain(response, vendorID);
     }
 
     /**
@@ -178,72 +156,18 @@ public class API {
         HttpResponse<String> response = connection.post(ConnectionURI.getURI(uri.locationConcepts + vendorID), headers,
                 HttpRequest.BodyPublishers.ofString("{}"));
 
-        if (response.statusCode() == Connection.OK_STATUS) {
-            JSONArray body = new JSONArray(response.body());
-
-            JSONObject info = body.getJSONObject(0);
-            String currentMenuID = info.getString("id");
-
-            String vendorName = info.getJSONObject("conceptOptions").getString("displayText");
-            boolean isOpen = info.getBoolean("availableNow");
-
-            //make Schedules
-            //TODO is there any reason to bother with schedules since isOpen and isAvailable exist?
-            //ArrayList<MenuSchedule> schedules = new ArrayList<>();
-
-            //make Menus
-            JSONArray menuJson = info.getJSONArray("menus");
-            ArrayList<Menu> menus = new ArrayList<>();
-            for (Object i : menuJson) {
-                JSONObject menu = (JSONObject) i;
-                String description = menu.getString("description"); //TODO store this?
-                String id = menu.getString("id");
-                String name = menu.getString("name");
-
-
-                //make MenuCategories
-                JSONArray categoryJson = menu.getJSONArray("categories");
-                ArrayList<MenuCategory> categories = new ArrayList<>();
-                for (Object j : categoryJson) {
-                    JSONObject categoryItem = (JSONObject) j;
-
-                    String categoryID = categoryItem.getString("categoryId");
-                    String categoryName = categoryItem.getString("name");
-                    //TODO:
-                    //what does categoryOptions: {} do?
-                    //what does isAvailableToGuests: true do?
-                    //what does itemIdToItemPropertiesMap: {} do?
-
-                    //make MenuItems
-                    ArrayList<MenuItem> menuItems = new ArrayList<>();
-                    JSONArray items = categoryItem.getJSONArray("items");
-                    for (Object k : items) {
-                        String itemID = k.toString();
-                        menuItems.add(ModelFactory.makeMenuItem(itemID, null));
-                    }
-                    categories.add(ModelFactory.makeMenuCategory(categoryID, categoryName, menuItems));
-                }
-
-                menus.add(ModelFactory.makeMenu(id, name, categories));
-            }
-            Vendor v = ModelFactory.makeVendor(vendorID, vendorName, menus);
-            v.setOpen(isOpen);
-            v.menuLocationID=currentMenuID;
-            return v;
-        }
-        return null;
+        return ParseJson.parseVendorConcept(response,vendorID);
     }
 
-    public void getMenu(Vendor vendor){
+    public void getMenu(Vendor vendor) {
         //get the current menu from the current location id
         //OnDemand is weird because it has a separate id to go to in order to get the current menu
         //but this id varies by vendor
-        String menuID=vendor.menuLocationID;
-        HttpResponse<String> response = connection.post(ConnectionURI.getURI(uri.locationConcepts + vendor.getID() + uri.menuAddon +menuID), headers,
+        String menuID = vendor.menuLocationID;
+        HttpResponse<String> response = connection.post(ConnectionURI.getURI(uri.locationConcepts + vendor.getID() + uri.menuAddon + menuID), headers,
                 HttpRequest.BodyPublishers.ofString("{}"));
-
+        //TODO
     }
-
 
     /**
      * Parses data shared by the locations and vendor main api pages
@@ -252,23 +176,9 @@ public class API {
      * @return array of [vendor name, vendor id, menu id]
      */
     private String[] parseCommonData(JSONObject vendorData) {
-        JSONArray conceptInfo = vendorData.getJSONArray("conceptInfo");
-        JSONObject concept = conceptInfo.getJSONObject(0);
-        String name = concept.getString("onDemandDisplayText"); //get name
-        String menuID = concept.getString("id"); //get menu id
-
-        String vendorID = vendorData.getString("displayProfileId"); //get id
-
-        //when there is a custom name, change it to that
-        //TODO: decide which name takes priority
-        //currently the custom name wins when enabled
-        JSONObject customLocation = (JSONObject) vendorData.get("customizeLocation");
-        boolean customizeName = customLocation.getBoolean("featureEnabled");
-        if (customizeName) {
-            name = customLocation.getString("locationName");
-        }
-
-        return new String[]{name, vendorID, menuID};
+        //TODO: remove this method once all methods
+        //calling this once are moved to ParseJson
+        return ParseJson.parseCommonData(vendorData);
     }
 
 }

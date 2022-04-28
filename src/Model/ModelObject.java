@@ -4,9 +4,9 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-public abstract class ModelObject {
+public abstract class ModelObject{
     private final List<Listener<ModelObject, String>> listeners = new LinkedList<>();
-    private ArrayList<ModelObject> children = new ArrayList<ModelObject>();
+    private ArrayList<ModelObject> children = new ArrayList<>();
     private boolean hasChildren = false;
     private final String id;
     private String name;
@@ -63,15 +63,15 @@ public abstract class ModelObject {
      */
     @Override
     public String toString(){
-        String res="ModelObject(id:"+id+", name:"+name+", children:{";
+        StringBuilder res= new StringBuilder("ModelObject(id:" + id + ", name:" + name + ", children:{");
         for (int i=0; i<children.size();i++) {
-            res += children.get(i).toString();
+            res.append(children.get(i).toString());
             if(i!=children.size()-1){
-                res+=", ";
+                res.append(", ");
             }
         }
-        res+="})";
-        return res;
+        res.append("})");
+        return res.toString();
     }
 
     /**
@@ -83,11 +83,35 @@ public abstract class ModelObject {
         }
     }
 
+    /**
+     * Merge data from this object into the current object
+     *
+     * @param o1 Instance to get data from
+     */
+    public void mergeModel(ModelObject o1){
+        //ids must be the same
+        assert (o1.id!=null && this.id!=null);
+        assert (o1.id.equals(this.id));
+
+        //inherit the shorter name
+        if (o1.name!=null){
+            if(o1.name.length()<this.name.length()){
+                this.name=o1.name;
+            }
+        }
+        //merge new children
+        for (ModelObject child:o1.children){
+            if(!this.children.contains(child)){
+                addChild(child);
+            }
+        }
+    }
+
     public void addListener(Listener<ModelObject, String> listener) {
         this.listeners.add(listener);
     }
 
     public void testChange(){
-        notifyListeners("test change on "+this.toString());
+        notifyListeners("test change on "+ this);
     }
 }

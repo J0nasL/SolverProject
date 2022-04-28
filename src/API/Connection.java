@@ -13,13 +13,18 @@ import java.net.http.HttpResponse;
  * Does the work of actually making requests to servers
  * and ensuring the responses are valid
  */
-public class Connection {
+public class Connection{
 
 public static final int OK_STATUS=200;
     private final HttpClient client;
+    private boolean ignoreStatus=false;
 
     public Connection() {
         client = Cert.getClientWithCert();
+    }
+
+    public void setIgnoreStatus(boolean ignoreStatus){
+        this.ignoreStatus=ignoreStatus;
     }
 
     public HttpResponse<String> get(URI uri, String[] headers) {
@@ -58,7 +63,7 @@ public static final int OK_STATUS=200;
         try {
             HttpRequest request = builder.uri(uri).build();
             response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode()!=OK_STATUS){
+            if (response.statusCode()!=OK_STATUS && !ignoreStatus){
                 System.out.println("Status code "+response.statusCode());
                 System.out.println(response.body());
             }

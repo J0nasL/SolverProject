@@ -1,13 +1,12 @@
 package Model;
 
 /**
- * Represents a vendor with at least one MenuSchedule
+ * Represents a vendor with at least one Menu
  */
 public class Vendor extends ModelObject implements Comparable<Vendor> {
 
     private Boolean isOpen=null;
     private String currentMenuID = null;
-
     public String menuLocationID=null;
 
 
@@ -59,6 +58,25 @@ public class Vendor extends ModelObject implements Comparable<Vendor> {
     @Override
     public String toString() {
         return "Vendor(isOpen(): " + isOpen() + ", currentMenuID:" + currentMenuID + ", "+ super.toString() + ")";
+    }
+
+    @Override
+    public void mergeModel(ModelObject o1) {
+        assert (o1 instanceof Vendor);
+        Vendor v=(Vendor)o1;
+        super.mergeModel(o1);
+        //merge isOpen
+        if(this.isOpen==null){
+            this.isOpen=v.isOpen;
+        }
+        //merge currentMenuID
+        if(this.currentMenuID==null){
+            this.currentMenuID=v.currentMenuID;
+        }
+        //merge menuLocationID
+        if(this.menuLocationID==null){
+            this.menuLocationID=v.menuLocationID;
+        }
     }
 
     @Override

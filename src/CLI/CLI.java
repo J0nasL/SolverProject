@@ -13,7 +13,8 @@ public class CLI implements Listener<ModelObject, String>{
 
     public static API api;
     private static Storage storage;
-    private static final boolean DEBUG=true;
+    private static final boolean DEBUG=false;
+    private String VendorIDs;
 
     public static void main(String[] args) {
         System.out.println("Started CLI");
@@ -54,7 +55,7 @@ public class CLI implements Listener<ModelObject, String>{
     private void controller() {
         while (true) {
 
-            Vendor v = showVendorOptions();
+            Vendor v = showVendorOptions(api.getConfig()[1]);
             if (v == null) {
                 break;
             }
@@ -74,15 +75,38 @@ public class CLI implements Listener<ModelObject, String>{
         }
     }
 
-    private void debug(){
-        Vendor v = ModelFactory.makeVendor("2164","Midnight Oil", new ArrayList<>());
-        //todo the results of these calls are being thrown out
-        //need to merge these into the existing vendor object
-        api.getVendorMain(v.getID());
-        api.getVendorConcepts(v.getID());
-        Menu m=v.getCurrentMenu();
-        if(m!=null) {
-            menuPrint(m);
+    private void debug() {
+        timeTrial();
+    }
+
+    private void timeTrial(){
+        //compares speed of synchronous calls to every vendor versus one call to 1312 document
+        //timing is approximately equal when individual calls are synchronous, and much faster when async
+        long groupSum=0;
+        long indSum=0;
+        int groupTotal=0;
+        int indTotal=0;
+        String[] vendorIDs = api.getConfig()[1];
+        for (int i = 0; i < 50; i++) {
+            boolean isEven=i%2==0;
+            long start=System.currentTimeMillis();
+            if(isEven){
+                api.getLocations();
+            } else {
+                api.getLocationsIndividually(vendorIDs);
+            }
+            long end=System.currentTimeMillis();
+            if (isEven){
+                groupSum+=end-start;
+                groupTotal+=1;
+            } else {
+                indSum+=end-start;
+                indTotal+=1;
+            }
+            System.out.println("Average lumped: " + (groupSum/groupTotal) + "ms, total=" + (groupTotal));
+            if(indTotal>0) {
+                System.out.println("Average Individual: " + (indSum / indTotal) + "ms, total=" + (indTotal));
+            }
         }
     }
 
@@ -91,7 +115,7 @@ public class CLI implements Listener<ModelObject, String>{
      *
      * @return chosen vendors
      */
-    private Vendor showVendorOptions() {
+    private Vendor showVendorOptions(String[] vendorIDs) {
         int numberOffset = 1;
         //TODO: save vendor info and query each vendor individually to remove the need for a call to locations
         ArrayList<Vendor> vendors = api.getLocations();
@@ -99,7 +123,7 @@ public class CLI implements Listener<ModelObject, String>{
             return null;
         }
 
-        vendors.sort((o1, o2) -> o1.getName().compareTo(o2.getName()));
+        vendors.sort(Vendor::compareTo);
         ArrayList<Vendor> openVendors = new ArrayList<>();
         ArrayList<Vendor> closedVendors = new ArrayList<>();
         for (Vendor vendor : vendors) {
