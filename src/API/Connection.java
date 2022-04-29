@@ -16,6 +16,7 @@ import java.net.http.HttpResponse;
 public class Connection{
 
 public static final int OK_STATUS=200;
+    public static final boolean PRINT_CONNECTIONS=false;
     private final HttpClient client;
     private boolean ignoreStatus=false;
 
@@ -58,7 +59,9 @@ public static final int OK_STATUS=200;
     }
 
     private HttpResponse<String> doRequest(URI uri, HttpRequest.Builder builder) {
-        System.out.println("Request to "+uri.toString());
+        if(PRINT_CONNECTIONS) {
+            System.out.println("Request to " + uri.toString());
+        }
         HttpResponse<String> response = null;
         try {
             HttpRequest request = builder.uri(uri).build();

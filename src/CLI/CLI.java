@@ -13,6 +13,7 @@ public class CLI implements Listener<ModelObject, String>{
     private static Storage storage;
     private static final boolean DEBUG=false;
     private String VendorIDs;
+    private static final int NUMBER_OFFSET=1;
 
     public static void main(String[] args) {
         System.out.println("Started CLI");
@@ -53,32 +54,47 @@ public class CLI implements Listener<ModelObject, String>{
     private void controller() {
         while (true) {
 
-            Vendor v = showVendorOptions(api.getConfig()[1]);
+            String[][] configInfo=api.getConfig();
+            if(configInfo==null){
+                break;
+            }
+            Vendor v = showVendorOptions(configInfo[1]);
             if (v == null) {
                 break;
             }
             System.out.println("Showing data for " + v.getName());
 
+            //TODO have these calls run at the same time
+            //maybe only 1 public method in the api for both?
             Vendor data=api.getVendorMain(v.getID());
+            Vendor concept=api.getVendorConcepts(v.getID());
             if (data != null) {
                 v.mergeModel(data);
-                Vendor concept=api.getVendorConcepts(v.getID());
                 if (concept!=null) {
                     v.mergeModel(concept);
 
                     v.setCurrentMenuID(api.getCurMenuID(v.getID()));
-                    System.out.println(v);
-                    MenuCategory chosenCategory=showMenuOptions(v,1);
-                    System.out.println("Showing data for "+chosenCategory.getName());
+                    MenuCategory chosenCategory=showMenuOptions(v);
+                    if (chosenCategory!=null) {
+                        System.out.println("Showing data for " + chosenCategory.getName());
+                        //this will also merge the items into the vendor that owns the category
+                        MenuCategory itemModel=api.getItems(v,chosenCategory);
+                        if(itemModel!=null) {
+                            chosenCategory.mergeModel(itemModel);
+                            MenuItem chosenItem = showItemOptions(chosenCategory);
+                            if (chosenItem != null) {
 
-
+                                System.out.println("Chosen item: " + chosenItem.getName());
+                            }
+                        }
+                    }
                 }
             }
 
             //for now, break
             break;
-
         }
+        System.out.println("Exiting.");
     }
 
     private void debug() {
@@ -169,15 +185,29 @@ public class CLI implements Listener<ModelObject, String>{
         }
     }
 
+    private Integer getChoice(int numberOffset, int arraySize){
+        //TODO refactor showVendorOptions to use this method
+        while (true) {
+            int res = Choice.chooseInt("\nChoose one (" + Choice.ERROR_INT + " to exit):");
+            if (res == Choice.ERROR_INT) {
+                return null;
+            }
+            res -= numberOffset;
+            if (res < arraySize && res>=0) {
+                return res;
+            }
+        }
+    }
+
     /**
      * Gets a list of menu categories, lets the user choose one
      *
      * @return chosen category
      */
-    private MenuCategory showMenuOptions(Vendor vendor, int numberOffset) {
+    private MenuCategory showMenuOptions(Vendor vendor) {
         //TODO make numberOffset a static final global somewhere
         Menu curMenu=vendor.getCurrentMenu();
-        System.out.println("Current menu: "+curMenu);
+        System.out.println("Current menu: "+curMenu.getName());
         if (curMenu == null) {
             return null;
         }
@@ -186,25 +216,25 @@ public class CLI implements Listener<ModelObject, String>{
         //TODO sort alphabetically, not by ID
 
         System.out.println("Categories:");
-        objectPrint(categories,numberOffset);
+        objectPrint(categories,NUMBER_OFFSET);
+        return (MenuCategory) categories.get(getChoice(NUMBER_OFFSET,categories.size()));
+    }
 
-        while (true) {
-            int res = Choice.chooseInt("\nChoose a category (" + Choice.ERROR_INT + " to exit):");
-            if (res == Choice.ERROR_INT) {
-                return null;
-            }
-            res -= numberOffset;
-            if (res < categories.size() && res>=0) {
-                return (MenuCategory) categories.get(res);
-            }
-        }
+    private MenuItem showItemOptions(MenuCategory category) {
+        //TODO make numberOffset a static final global somewhere
+        System.out.println("Current category: "+category.getName());
+        ArrayList<ModelObject> items =category.getChildren();
+        items.sort(ModelObject::compareTo);
+        //TODO sort alphabetically, not by ID
+        System.out.println("Items:");
+        objectPrint(items,NUMBER_OFFSET);
+        return (MenuItem) items.get(getChoice(NUMBER_OFFSET,items.size()));
     }
 
     private void listenerTest(ModelObject m) {
         m.addListener(this);
         m.testChange();
     }
-
 
     /**
      * This just tests whether the model factory arguments are correct
@@ -223,7 +253,6 @@ public class CLI implements Listener<ModelObject, String>{
 
         System.out.println(v);
     }
-
 
     @Override
     public void update(ModelObject object, String s) {

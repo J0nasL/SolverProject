@@ -15,10 +15,12 @@ public class ConnectionURI {
     public static final String LOGIN = "/api/login/anonymous";
     public static final String CONFIG = "/api/config";
 
-    public String locations;
+    public String locationsBusiness;
+    public String locationsTenant;
     public String locationMain;
     public String locationConcepts;
     public String menuAddon;
+    public String getItems;
 
     public final String businessID;
     public final String tenantID;
@@ -46,9 +48,11 @@ public class ConnectionURI {
 
     private void populateURIs() {
         //TODO make a separate locations variable specifically for 1312 document
-        locations = "/api/sites/" + businessID;
-        locationMain = locations; //add the vendor id
-        locationConcepts = locations + "/" + businessID + "/concepts/"; //add the vendor id
+        locationsBusiness = "/api/sites/" + businessID;
+        locationsTenant = "/api/sites/" + tenantID;
+        locationMain = locationsBusiness; //add the vendor id
+        locationConcepts = locationsBusiness + "/" + businessID + "/concepts/"; //add the vendor id
         menuAddon = "/menus/";
+        getItems = locationsTenant + "/" + businessID +"/kiosk-items/get-items";
     }
 }

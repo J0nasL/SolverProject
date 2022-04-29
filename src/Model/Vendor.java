@@ -8,6 +8,8 @@ public class Vendor extends ModelObject {
     private Boolean isOpen=null;
     private String currentMenuID = null;
     public String menuLocationID=null;
+    public String terminalID=null;
+    public String profitCenterID=null;
 
 
     protected Vendor(String id, String name) {
@@ -76,6 +78,12 @@ public class Vendor extends ModelObject {
         //merge menuLocationID
         if(this.menuLocationID==null){
             this.menuLocationID=v.menuLocationID;
+        }
+        if(this.terminalID==null){
+            this.terminalID=v.terminalID;
+        }
+        if(this.profitCenterID==null){
+            this.profitCenterID=v.profitCenterID;
         }
     }
 }

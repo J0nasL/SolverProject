@@ -86,8 +86,8 @@ public class API {
     }
 
     public static API getInstance(String token) {
-        String[][] res=getConfig(token);
-        if (res!=null) {
+        String[][] res = getConfig(token);
+        if (res != null) {
             String[] ids = res[0];
             return new API(token, ids[0], ids[1]);
         }
@@ -106,7 +106,7 @@ public class API {
      * @return Array of vendors with no children
      */
     public ArrayList<Vendor> getLocations() {
-        HttpResponse<String> response = connection.get(ConnectionURI.getURI(uri.locations), headers);
+        HttpResponse<String> response = connection.get(ConnectionURI.getURI(uri.locationsBusiness), headers);
         return ParseJson.parseLocations(response);
     }
 
@@ -160,36 +160,36 @@ public class API {
         HttpResponse<String> response = connection.post(ConnectionURI.getURI(uri.locationConcepts + vendorID), headers,
                 HttpRequest.BodyPublishers.ofString("{}"));
 
-        return ParseJson.parseVendorConcept(response,vendorID);
+        return ParseJson.parseVendorConcept(response, vendorID);
     }
 
-    private JSONArray getPassableMenuData(String vendorID){
+    private JSONArray getPassableMenuData(String vendorID) {
         //TODO this is an unnecessary extra call to concept page, find a way to reduce calls
         HttpResponse<String> response = connection.post(ConnectionURI.getURI(uri.locationConcepts + vendorID), headers,
                 HttpRequest.BodyPublishers.ofString("{}"));
 
-        if(response.statusCode()==Connection.OK_STATUS) {
+        if (response.statusCode() == Connection.OK_STATUS) {
             return new JSONArray(response.body());
         }
         return null;
     }
 
-    public String getCurMenuID(String vendorID){
-        JSONObject data=getPassableMenuData(vendorID).getJSONObject(0);
-        if (data==null){
+    public String getCurMenuID(String vendorID) {
+        JSONObject data = getPassableMenuData(vendorID).getJSONObject(0);
+        if (data == null) {
             return null;
         }
 
-        String menuLocationID=data.getString("id");
+        String menuLocationID = data.getString("id");
 
-        JSONArray menus=data.getJSONArray("menus");
-        JSONArray schedules=data.getJSONArray("schedule");
-        JSONObject body=new JSONObject();
-        body.put("menus",menus);
-        body.put("schedule",schedules);
+        JSONArray menus = data.getJSONArray("menus");
+        JSONArray schedules = data.getJSONArray("schedule");
+        JSONObject body = new JSONObject();
+        body.put("menus", menus);
+        body.put("schedule", schedules);
         //TODO figure out how to put JSON directly into body without having
         //to convert to string, since it will probably be converted back to JSON by HttpClient
-        String bodyStr=body.toString();
+        String bodyStr = body.toString();
         //4 other key,value pairs to consider adding if the server returns a 500 error
 
         HttpResponse<String> response = connection.post(ConnectionURI.getURI(uri.locationConcepts + vendorID + uri.menuAddon + menuLocationID), headers,
@@ -198,8 +198,34 @@ public class API {
         return ParseJson.parseMenuID(response);
     }
 
-    public void getItems(String vendorID, Menu m){
+    public MenuCategory getItems(Vendor v, MenuCategory category) {
         //TODO refactor all instance methods to take Vendor instead of vendorID?
+        JSONObject body = new JSONObject();
+
+        JSONArray itemIds = new JSONArray();
+        for (ModelObject child : category.getChildren()) {
+            MenuItem item = (MenuItem) child;
+            itemIds.put(item.getID());
+        }
+        body.put("itemIds", itemIds);
+        body.put("conceptId", v.menuLocationID);
+
+        //TODO see how many of these can be removed
+        body.put("onDemandTerminalId", v.terminalID);
+        body.put("profitCenterId", v.profitCenterID);
+        body.put("storePriceLevel", "1");
+        body.put("currencyUnit", "USD");
+
+        //TODO figure out how to leave as JSON
+        HttpResponse<String> response = connection.post(ConnectionURI.getURI(uri.getItems), headers,
+                HttpRequest.BodyPublishers.ofString(body.toString()));
+
+        ArrayList<MenuItem> items = ParseJson.parseMenuItems(response);
+        if (items == null) {
+            return null;
+        }
+        return ModelFactory.makeMenuCategory(category.getID(), null, items);
+
 
     }
 

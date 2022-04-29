@@ -100,14 +100,23 @@ public abstract class ModelObject implements Comparable<ModelObject> {
 
         //inherit the shorter name
         if (o1.name != null) {
-            if (o1.name.length() < this.name.length()) {
+            if (this.name==null || o1.name.length() < this.name.length()) {
                 this.name = o1.name;
             }
         }
         //merge new children
-        for (ModelObject child : o1.children) {
-            if (!this.children.contains(child)) {
-                addChild(child);
+        for (ModelObject otherChild : o1.children) {
+            //whether a child with the same ID exists in this object's children
+            boolean childFound=false;
+            for (int i = 0; i < this.children.size(); i++) {
+                ModelObject child=this.children.get(i);
+                if(otherChild.id.equals(child.id)){
+                    child.mergeModel(otherChild);
+                    childFound=true;
+                }
+            }
+            if (!childFound){
+                this.addChild(otherChild);
             }
         }
     }
