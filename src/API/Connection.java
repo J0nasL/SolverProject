@@ -20,57 +20,57 @@ public class Connection{
     private final HttpClient client;
     private boolean ignoreStatus=false;
 
-    public Connection() {
-        client = Cert.getClientWithCert();
+    public Connection(){
+        client=Cert.getClientWithCert();
     }
 
     public void setIgnoreStatus(boolean ignoreStatus){
         this.ignoreStatus=ignoreStatus;
     }
 
-    public HttpResponse<String> get(URI uri, String[] headers) {
-        HttpRequest.Builder request = HttpRequest.newBuilder()
+    public HttpResponse<String> get(URI uri, String[] headers){
+        HttpRequest.Builder request=HttpRequest.newBuilder()
                 .GET();
-        if (headers.length != 0) {
+        if (headers.length!=0){
             request.headers(headers);
         }
-        HttpResponse<String> response = doRequest(uri, request);
+        HttpResponse<String> response=doRequest(uri, request);
         return response;
     }
 
-    public HttpResponse<String> post(URI uri, String[] headers, HttpRequest.BodyPublisher body) {
-        HttpRequest.Builder request = HttpRequest.newBuilder()
+    public HttpResponse<String> post(URI uri, String[] headers, HttpRequest.BodyPublisher body){
+        HttpRequest.Builder request=HttpRequest.newBuilder()
                 .POST(body);
-        if (headers.length != 0) {
+        if (headers.length!=0){
             request.headers(headers);
         }
-        HttpResponse<String> response = doRequest(uri, request);
+        HttpResponse<String> response=doRequest(uri, request);
         return response;
     }
 
-    public HttpResponse<String> put(URI uri, String[] headers) {
-        HttpRequest.Builder request = HttpRequest.newBuilder()
+    public HttpResponse<String> put(URI uri, String[] headers){
+        HttpRequest.Builder request=HttpRequest.newBuilder()
                 .PUT(HttpRequest.BodyPublishers.noBody());
-        if (headers.length != 0) {
+        if (headers.length!=0){
             request.headers(headers);
         }
-        HttpResponse<String> response = doRequest(uri, request);
+        HttpResponse<String> response=doRequest(uri, request);
         return response;
     }
 
-    private HttpResponse<String> doRequest(URI uri, HttpRequest.Builder builder) {
-        if(PRINT_CONNECTIONS) {
+    private HttpResponse<String> doRequest(URI uri, HttpRequest.Builder builder){
+        if (PRINT_CONNECTIONS){
             System.out.println("Request to " + uri.toString());
         }
-        HttpResponse<String> response = null;
-        try {
-            HttpRequest request = builder.uri(uri).build();
-            response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response=null;
+        try{
+            HttpRequest request=builder.uri(uri).build();
+            response=client.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode()!=OK_STATUS && !ignoreStatus){
-                System.out.println("Status code "+response.statusCode());
+                System.out.println("Status code " + response.statusCode());
                 System.out.println(response.body());
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException | InterruptedException e){
             e.printStackTrace();
         }
         return response;

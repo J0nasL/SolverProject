@@ -1,4 +1,4 @@
 package GUI;
 
-public class Controller {
+public class Controller{
 }

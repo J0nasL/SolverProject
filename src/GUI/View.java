@@ -1,5 +1,5 @@
 package GUI;
 
-public class View {
+public class View{
     //TODO: import jfx to run a jfx GUI
 }

@@ -7,8 +7,9 @@ import java.util.Objects;
 
 public class RunnableConnection implements Runnable{
     public static enum method{
-        GET,POST,PUT
+        GET, POST, PUT
     }
+
     private method curMethod;
     private URI curURI;
     private String[] curHeaders;
@@ -20,15 +21,15 @@ public class RunnableConnection implements Runnable{
         curURI=uri;
         curHeaders=headers;
 
-        curBody = Objects.requireNonNullElseGet(body, HttpRequest.BodyPublishers::noBody);
+        curBody=Objects.requireNonNullElseGet(body, HttpRequest.BodyPublishers::noBody);
     }
 
     public void run(){
-        Connection c = new Connection(); //make this async bc might be a little slow
+        Connection c=new Connection(); //make this async bc might be a little slow
         switch (curMethod){
-            case GET -> response=c.get(curURI,curHeaders);
-            case PUT -> response=c.put(curURI,curHeaders);
-            case POST -> response=c.post(curURI,curHeaders,curBody);
+            case GET -> response=c.get(curURI, curHeaders);
+            case PUT -> response=c.put(curURI, curHeaders);
+            case POST -> response=c.post(curURI, curHeaders, curBody);
         }
 
     }

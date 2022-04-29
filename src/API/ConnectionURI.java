@@ -6,14 +6,14 @@ import java.net.URI;
  * Creates a URI for use by Connection.
  * Instances should be created once for each hostname to be accessed
  */
-public class ConnectionURI {
+public class ConnectionURI{
 
     public static final int HTTPS_PORT=443;
 
-    public static final String ON_DEMAND ="https://ondemand.rit.edu";
-    public static final String SITE_DOWN = "/sitedown";
-    public static final String LOGIN = "/api/login/anonymous";
-    public static final String CONFIG = "/api/config";
+    public static final String ON_DEMAND="https://ondemand.rit.edu";
+    public static final String SITE_DOWN="/sitedown";
+    public static final String LOGIN="/api/login/anonymous";
+    public static final String CONFIG="/api/config";
 
     public String locationsBusiness;
     public String locationsTenant;
@@ -26,7 +26,7 @@ public class ConnectionURI {
     public final String tenantID;
 
 
-    public ConnectionURI(String businessID, String tenantID) {
+    public ConnectionURI(String businessID, String tenantID){
         this.businessID=businessID;
         this.tenantID=tenantID;
         populateURIs();
@@ -40,19 +40,19 @@ public class ConnectionURI {
      * @param path path after the hostname
      * @return URI
      */
-    public static URI getURI(String path) {
-        return URI.create(ON_DEMAND+
+    public static URI getURI(String path){
+        return URI.create(ON_DEMAND +
                 //":"+HTTPS_PORT+ //port number
                 path);
     }
 
-    private void populateURIs() {
+    private void populateURIs(){
         //TODO make a separate locations variable specifically for 1312 document
-        locationsBusiness = "/api/sites/" + businessID;
-        locationsTenant = "/api/sites/" + tenantID;
-        locationMain = locationsBusiness; //add the vendor id
-        locationConcepts = locationsBusiness + "/" + businessID + "/concepts/"; //add the vendor id
-        menuAddon = "/menus/";
-        getItems = locationsTenant + "/" + businessID +"/kiosk-items/get-items";
+        locationsBusiness="/api/sites/" + businessID;
+        locationsTenant="/api/sites/" + tenantID;
+        locationMain=locationsBusiness; //add the vendor id
+        locationConcepts=locationsBusiness + "/" + businessID + "/concepts/"; //add the vendor id
+        menuAddon="/menus/";
+        getItems=locationsTenant + "/" + businessID + "/kiosk-items/get-items";
     }
 }

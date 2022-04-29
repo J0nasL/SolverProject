@@ -1,12 +1,12 @@
 package Model;
 
-public class Menu extends ModelObject {
-    protected Menu(String id, String name) {
+public class Menu extends ModelObject{
+    protected Menu(String id, String name){
         super(id, name);
     }
 
     @Override
-    public String toString() {
+    public String toString(){
         return "Menu(" + super.toString() + ")";
     }
 }

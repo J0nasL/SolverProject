@@ -1,5 +1,5 @@
 package GUI;
 
-public class GUI {
+public class GUI{
 
 }
