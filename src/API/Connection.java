@@ -15,8 +15,8 @@ import java.net.http.HttpResponse;
  */
 public class Connection{
 
-public static final int OK_STATUS=200;
-    public static final boolean PRINT_CONNECTIONS=false;
+    public static final int OK_STATUS=200;
+    public static final boolean PRINT_CONNECTIONS=true;
     private final HttpClient client;
     private boolean ignoreStatus=false;
 

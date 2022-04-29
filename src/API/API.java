@@ -210,11 +210,11 @@ public class API {
         body.put("itemIds", itemIds);
         body.put("conceptId", v.menuLocationID);
 
-        //TODO see how many of these can be removed
-        body.put("onDemandTerminalId", v.terminalID);
-        body.put("profitCenterId", v.profitCenterID);
-        body.put("storePriceLevel", "1");
-        body.put("currencyUnit", "USD");
+        //These don't seem to be necessary
+        //body.put("onDemandTerminalId", v`.terminalID);
+        //body.put("profitCenterId", v.profitCenterID);
+        //body.put("storePriceLevel", "1");
+        //body.put("currencyUnit", "USD");`
 
         //TODO figure out how to leave as JSON
         HttpResponse<String> response = connection.post(ConnectionURI.getURI(uri.getItems), headers,

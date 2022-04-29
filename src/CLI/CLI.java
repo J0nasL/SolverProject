@@ -194,6 +194,7 @@ public class CLI implements Listener<ModelObject, String>{
             }
             res -= numberOffset;
             if (res < arraySize && res>=0) {
+                System.out.println();
                 return res;
             }
         }
