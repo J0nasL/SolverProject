@@ -3,10 +3,10 @@ package Model;
 /**
  * Represents an option group that can contain OptionItems
  */
-public class OptionGroup extends ModelItem{
+public class OptionGroup extends ModelObject{
 
-    protected OptionGroup(String id, String name){
-        super(id, name);
+    protected OptionGroup(String id){
+        super(id);
     }
 
     @Override

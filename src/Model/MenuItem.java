@@ -5,8 +5,8 @@ package Model;
  */
 public class MenuItem extends ModelItem{
 
-    protected MenuItem(String id, String name){
-        super(id, name);
+    protected MenuItem(String id){
+        super(id);
     }
 
     @Override

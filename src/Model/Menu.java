@@ -4,8 +4,10 @@ package Model;
  * Represents a menu that can contain MenuCategories
  */
 public class Menu extends ModelObject{
-    protected Menu(String id, String name){
-        super(id, name);
+    public String description=null;
+
+    protected Menu(String id){
+        super(id);
     }
 
     @Override

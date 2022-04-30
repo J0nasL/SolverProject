@@ -45,7 +45,7 @@ public class Storage{
     }
 
     /**
-     * Get a the value for the given key
+     * Get the value for the given key
      *
      * @return corresponding value or Storage.NOT_FOUND
      */

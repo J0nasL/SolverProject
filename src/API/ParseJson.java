@@ -4,141 +4,10 @@ import Model.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import javax.print.attribute.standard.JobSheets;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 
 public class ParseJson{
-    public static ArrayList<Vendor> parseLocations(HttpResponse<String> response){
-        if (response.statusCode()==Connection.OK_STATUS){
-            JSONArray json=new JSONArray(response.body());
-
-            ArrayList<Vendor> vendors=new ArrayList<>();
-            for (Object i: json){
-                //for each vendor:
-                JSONObject cur_vendor=(JSONObject) i;
-
-                String[] conceptData=parseCommonData(cur_vendor);
-                String name=conceptData[0];
-                String vendorID=conceptData[1];
-                String menuID=conceptData[2];
-
-                JSONObject displayOptions=cur_vendor.getJSONObject("displayOptions");
-                String terminalID=displayOptions.getString("onDemandTerminalId");
-                String profitCenterID=displayOptions.getString("profit-center-id");
-
-                Menu thisMenu=ModelFactory.makeMenu(menuID, null, null);
-                ArrayList<Menu> menus=new ArrayList<>();
-                menus.add(thisMenu);
-
-                //get whether this vendor is currently available
-                JSONObject availableAt=cur_vendor.getJSONObject("availableAt");
-                boolean isAvailable=availableAt.getBoolean("availableNow");
-
-                boolean conceptsAvailable=false; //assume closed if unable to parse
-                if (availableAt.has("conceptsAvailableNow")){
-                    conceptsAvailable=availableAt.getBoolean("conceptsAvailableNow");
-                } else{
-                    System.out.println("Unable to parse concept for " + name + ":\n" + availableAt);
-                }
-                //boolean isAvailable=cur_vendor.getBoolean("storeAvailabeNow"); //this is always true for some reason
-
-                //TODO: figure out how to handle available vs concepts available
-                Vendor v=ModelFactory.makeVendor(vendorID, name, menus);
-                v.setOpen(isAvailable && conceptsAvailable);
-                v.terminalID=terminalID;
-                v.profitCenterID=profitCenterID;
-                vendors.add(v);
-            }
-            return vendors;
-        }
-        return null;
-    }
-
-    public static Vendor parseMain(HttpResponse<String> response){
-        if (response.statusCode()==Connection.OK_STATUS){
-            JSONObject body=new JSONObject(response.body());
-
-            String[] conceptData=parseCommonData(body);
-            String name=conceptData[0];
-            String vendorID=conceptData[1];
-            String menuLocID=conceptData[2];
-
-            JSONObject displayOptions=body.getJSONObject("displayOptions");
-            String profitCenterID=displayOptions.getString("profit-center-id");
-            String terminalID=displayOptions.getString("onDemandTerminalId");
-
-            //TODO check if property isAsapOrderDisabled relates to high demand
-
-            Vendor vendor=ModelFactory.makeVendor(vendorID, name, null);
-            vendor.setName(name);
-            vendor.menuLocationID=menuLocID;
-            vendor.profitCenterID=profitCenterID;
-            vendor.terminalID=terminalID;
-
-            return vendor;
-        }
-        return null;
-    }
-
-    public static Vendor parseVendorConcept(HttpResponse<String> response, String vendorID){
-        if (response.statusCode()==Connection.OK_STATUS){
-            JSONArray body=new JSONArray(response.body());
-
-            //TODO see if any of this is in common with concept data, parse together
-            JSONObject info=body.getJSONObject(0);
-            String currentMenuLocID=info.getString("id");
-
-            String vendorName=info.getJSONObject("conceptOptions").getString("displayText");
-            boolean isOpen=info.getBoolean("availableNow");
-
-            JSONObject conceptOptions=info.getJSONObject("conceptOptions");
-            String profitCenterID=conceptOptions.getString("profitCenterId");
-
-            //make Menus
-            JSONArray menuJson=info.getJSONArray("menus");
-            ArrayList<Menu> menus=new ArrayList<>();
-            for (Object i: menuJson){
-                JSONObject menu=(JSONObject) i;
-                String description=menu.getString("description"); //TODO store this?
-                String id=menu.getString("id");
-                String name=menu.getString("name");
-
-
-                //make MenuCategories
-                JSONArray categoryJson=menu.getJSONArray("categories");
-                ArrayList<MenuCategory> categories=new ArrayList<>();
-                for (Object j: categoryJson){
-                    JSONObject categoryItem=(JSONObject) j;
-
-                    String categoryID=categoryItem.getString("categoryId");
-                    String categoryName=categoryItem.getString("name");
-                    //TODO:
-                    //what does categoryOptions: {} do?
-                    //what does isAvailableToGuests: true do?
-                    //what does itemIdToItemPropertiesMap: {} do?
-
-
-                    //make MenuItems
-                    ArrayList<MenuItem> menuItems=new ArrayList<>();
-                    JSONArray items=categoryItem.getJSONArray("items");
-                    for (Object k: items){
-                        String itemID=k.toString();
-                        menuItems.add(ModelFactory.makeMenuItem(itemID, null, null));
-                    }
-                    categories.add(ModelFactory.makeMenuCategory(categoryID, categoryName, menuItems));
-                }
-
-                menus.add(ModelFactory.makeMenu(id, name, categories));
-            }
-            Vendor v=ModelFactory.makeVendor(vendorID, vendorName, menus);
-            v.setOpen(isOpen);
-            v.menuLocationID=currentMenuLocID;
-            v.profitCenterID=profitCenterID;
-            return v;
-        }
-        return null;
-    }
 
     /**
      * Parses data shared by the locations and vendor main api pages
@@ -166,22 +35,185 @@ public class ParseJson{
         return new String[]{name, vendorID, menuID};
     }
 
-    public static String parseMenuID(HttpResponse<String> response){
+    /**
+     * Finds a child object with an ID matching the one provided, or creates one and adds it to the list of children
+     *
+     * @param objectID ID string of this object
+     * @param parent   a parent class extending ModelObject
+     * @param model    an enum representing the class of the child.
+     *                 This is used to construct a new child instance if needed.
+     * @return the corresponding child object, which may have just been initialized
+     */
+    private static ModelObject getIDMatch(String objectID, ModelObject parent, ModelFactory.models model){
+        ModelObject targetObject=null;
+        for (Object o: parent.children){
+            ModelObject c=(ModelObject) o;
+            if (c.id.equals(objectID)){
+                targetObject=c;
+            }
+        }
+        if (targetObject==null){
+            targetObject=ModelFactory.makeSomeObject(objectID, model);
+            parent.children.add(targetObject);
+        }
+        return targetObject;
+    }
+
+    public static void parseLocations(HttpResponse<String> response, ArrayList<Vendor> vendors){
+        if (response.statusCode()==Connection.OK_STATUS){
+            JSONArray json=new JSONArray(response.body());
+
+            //anonymous method to contain vendor objects
+            //TODO make a class above Vendor to contain vendor objects
+            ModelObject container=new ModelObject(""){
+            };
+            container.children.addAll(vendors);
+
+            //for each vendor:
+            for (Object i: json){
+                JSONObject cur_vendor=(JSONObject) i;
+
+                String[] conceptData=parseCommonData(cur_vendor);
+                String name=conceptData[0];
+                String vendorID=conceptData[1];
+                String menuLocationID=conceptData[2];
+
+                JSONObject displayOptions=cur_vendor.getJSONObject("displayOptions");
+                String terminalID=displayOptions.getString("onDemandTerminalId");
+                String profitCenterID=displayOptions.getString("profit-center-id");
+
+
+                //make a vendor object
+                Vendor targetVendor=(Vendor) getIDMatch(vendorID, container, ModelFactory.models.Vendor);
+
+                //get whether this vendor is currently available
+                JSONObject availableAt=cur_vendor.getJSONObject("availableAt");
+                boolean isAvailable=availableAt.getBoolean("availableNow");
+
+                //TODO take a look at refactoring this
+                boolean conceptsAvailable=false; //assume closed if unable to parse
+                if (availableAt.has("conceptsAvailableNow")){
+                    conceptsAvailable=availableAt.getBoolean("conceptsAvailableNow");
+                } else{
+                    System.out.println("Unable to parse concept for " + name + ":\n" + availableAt);
+                }
+                //boolean isAvailable=cur_vendor.getBoolean("storeAvailableNow"); //this is always true for some reason TODO I did a spelling fix, see if it changes
+
+                //TODO: figure out how to handle available vs concepts available
+
+                targetVendor.setName(name);
+                targetVendor.setOpen(isAvailable && conceptsAvailable);
+                targetVendor.menuLocationID=menuLocationID;
+                //TODO check if these are needed. if so, see if other pages give this info
+                targetVendor.terminalID=terminalID;
+                targetVendor.profitCenterID=profitCenterID;
+            }
+            vendors.clear();
+            for (ModelObject o:container.children){
+                Vendor v=(Vendor) o;
+                vendors.add(v);
+            }
+        }
+    }
+
+    public static void parseMain(HttpResponse<String> response, Vendor vendor){
+        if (response.statusCode()==Connection.OK_STATUS){
+            JSONObject body=new JSONObject(response.body());
+
+            String[] conceptData=parseCommonData(body);
+            String name=conceptData[0];
+            String vendorID=conceptData[1];
+            String menuLocID=conceptData[2];
+
+            JSONObject displayOptions=body.getJSONObject("displayOptions");
+            String profitCenterID=displayOptions.getString("profit-center-id");
+            String terminalID=displayOptions.getString("onDemandTerminalId");
+
+            //TODO check if property isAsapOrderDisabled relates to high demand
+
+            vendor.setName(name);
+            vendor.menuLocationID=menuLocID;
+            vendor.profitCenterID=profitCenterID;
+            vendor.terminalID=terminalID;
+        }
+    }
+
+    public static void parseVendorConcept(HttpResponse<String> response, Vendor vendor){
+        if (response.statusCode()==Connection.OK_STATUS){
+            JSONArray body=new JSONArray(response.body());
+
+            //TODO see if any of this is in common with concept data, parse together
+            JSONObject info=body.getJSONObject(0);
+            String currentMenuLocID=info.getString("id");
+
+            String vendorName=info.getJSONObject("conceptOptions").getString("displayText");
+            boolean isOpen=info.getBoolean("availableNow");
+
+            JSONObject conceptOptions=info.getJSONObject("conceptOptions");
+            String profitCenterID=conceptOptions.getString("profitCenterId");
+
+            JSONArray menuJson=info.getJSONArray("menus");
+            //make Menus
+            for (Object i: menuJson){
+                JSONObject menuJSON=(JSONObject) i;
+
+                String description=menuJSON.getString("description"); //TODO store this?
+                String menuID=menuJSON.getString("id");
+                String menuName=menuJSON.getString("name");
+
+                Menu targetMenu=(Menu) getIDMatch(menuID, vendor, ModelFactory.models.Menu);
+
+                JSONArray categoryJson=menuJSON.getJSONArray("categories");
+                //make MenuCategories
+                for (Object j: categoryJson){
+                    JSONObject categoryItem=(JSONObject) j;
+
+                    String categoryID=categoryItem.getString("categoryId");
+                    String categoryName=categoryItem.getString("name");
+                    //TODO:
+                    //what does categoryOptions: {} do?
+                    //what does itemIdToItemPropertiesMap: {} do?
+
+                    MenuCategory targetCategory=(MenuCategory) getIDMatch(categoryID, targetMenu, ModelFactory.models.MenuCategory);
+
+                    JSONArray items=categoryItem.getJSONArray("items");
+                    //make MenuItems
+                    for (Object k: items){
+                        String itemID=k.toString();
+
+                        MenuItem targetItem=(MenuItem) getIDMatch(itemID, targetCategory, ModelFactory.models.MenuItem);
+
+                    }
+
+                    targetCategory.setName(categoryName);
+
+                }
+
+                targetMenu.setName(menuName);
+                targetMenu.description=description;
+            }
+
+            vendor.setOpen(isOpen);
+            vendor.menuLocationID=currentMenuLocID;
+            vendor.profitCenterID=profitCenterID;
+            vendor.setName(vendorName);
+        }
+    }
+
+    public static void parseMenuID(HttpResponse<String> response, Vendor vendor){
         if (response.statusCode()==Connection.OK_STATUS){
             JSONArray body=new JSONArray(response.body());
             JSONObject info=body.getJSONObject(0);
 
             String menuID=info.getString("id");
-            return menuID;
+            vendor.setCurrentMenuID(menuID);
 
         }
-        return null;
     }
 
-    public static ArrayList<MenuItem> parseMenuItems(HttpResponse<String> response){
+    public static void parseMenuItems(HttpResponse<String> response, MenuCategory category){
         if (response.statusCode()==Connection.OK_STATUS){
             JSONArray body=new JSONArray(response.body());
-            ArrayList<MenuItem> items=new ArrayList<>();
 
             for (int i=0; i < body.length(); i++){
                 JSONObject object=body.getJSONObject(i);
@@ -200,7 +232,7 @@ public class ParseJson{
                 //names
                 String displayText=object.getString("displayText"); //User-readable name
                 String name=object.getString("name"); //Employee-readable name
-                //item name shorthands for the reciept
+                //item name shorthands for the receipt
                 String videoLabel=object.getString("kitchenVideoLabel");
                 String kpText=object.getString("kpText");
                 String receiptText=object.getString("receiptText");
@@ -225,30 +257,26 @@ public class ParseJson{
                 boolean isDeleted=object.getBoolean("isDeleted");
                 assert (!isDeleted);
 
+                MenuItem targetItem=(MenuItem) getIDMatch(itemID, category, ModelFactory.models.MenuItem);
+
                 //contains ids of OptionGroups
                 JSONArray childGroups=object.getJSONArray("childGroups");
 
-                ArrayList<OptionGroup> optionGroups=new ArrayList<>();
-
-                for(Object obj:childGroups){
+                for (Object obj: childGroups){
                     JSONObject groupJSON=(JSONObject) obj;
                     String groupID=groupJSON.getString("id");
-                    optionGroups.add(ModelFactory.makeOptionGroup(groupID,null,null));
+
+                    OptionGroup targetGroup=(OptionGroup) getIDMatch(groupID, targetItem, ModelFactory.models.OptionItem);
                 }
 
-                MenuItem curItem=ModelFactory.makeMenuItem(id, displayText, optionGroups);
-                curItem.setCookTime(cookTime);
-                curItem.setPrice(price);
-
-                items.add(curItem);
-
+                targetItem.setName(displayText);
+                targetItem.setCookTime(cookTime);
+                targetItem.setPrice(price);
             }
-            return items;
         }
-        return null;
     }
 
-    public static ArrayList<OptionGroup> parseItemOptions(HttpResponse<String> response){
+    public static void parseItemOptions(HttpResponse<String> response, MenuItem menuItem){
         //todo make this parse the whole item? is that a good idea?
         //calling parseMenuItems() would be easy
 
@@ -258,38 +286,37 @@ public class ParseJson{
             //This is where the OptionGroup is stored
             JSONArray childGroups=body.getJSONArray("childGroups");
 
-            ArrayList<OptionGroup> groups=new ArrayList<>();
-
             for (Object o: childGroups){
                 JSONObject groupJson=(JSONObject) o;
 
                 //ids
                 String groupID=groupJson.getString("id");
                 String groupType=groupJson.getString("groupType"); //TODO make an enum for this
-                String gID=groupJson.getString("groupId"); //some 3 digit number, not sure what this is for
+                String gID=groupJson.getString("groupId"); //some 3-digit number, not sure what this is for
 
                 //names
                 String groupName=groupJson.getString("name");
                 String groupDisplayName=groupJson.getString("displayName");
                 String terminalPrompt=groupJson.getString("terminalPrompt");
-                assert groupName.equals(terminalPrompt) && terminalPrompt.equals(groupDisplayName);
+                assert groupName.equals(terminalPrompt) &&
+                        terminalPrompt.equals(groupDisplayName);
 
-                int groupMaximum=groupJson.getInt("maximum");
+                int groupMaximum=groupJson.getInt("maximum"); //TODO add property for this
                 int groupMinimum=groupJson.getInt("minimum");
+
+                OptionGroup targetGroup=(OptionGroup) getIDMatch(groupID, menuItem, ModelFactory.models.OptionGroup);
+                targetGroup.setName(groupName);
 
 
                 //this is where OptionItems are stored
                 JSONArray childItems=groupJson.getJSONArray("childItems");
-
-
-                ArrayList<OptionItem> items=new ArrayList<>();
 
                 for (Object obj: childItems){
                     JSONObject itemJson=(JSONObject) obj;
 
                     //ids
                     String itemID=itemJson.getString("id");
-                    String iID=itemJson.getString("itemId"); //some 3 digit number, idk what for
+                    String iID=itemJson.getString("itemId"); //some 3-digit number, I don'y know what for
 
                     //names
                     String itemName=itemJson.getString("name");
@@ -299,11 +326,11 @@ public class ParseJson{
                     String itemKpText=itemJson.getString("kpText");
                     String itemReceiptText=itemJson.getString("receiptText");
                     assert (itemName.equals(itemDisplayText) &&
-                                    itemName.equals(itemKitchenDisplayText) &&
-                                    itemName.equals(itemKitchenVideoLabel) &&
-                                    itemName.equals(itemKpText) &&
-                                    itemName.equals(itemReceiptText)
-                            );
+                            itemName.equals(itemKitchenDisplayText) &&
+                            itemName.equals(itemKitchenVideoLabel) &&
+                            itemName.equals(itemKpText) &&
+                            itemName.equals(itemReceiptText)
+                    );
 
                     int itemCookTime=itemJson.getInt("kitchenCookTimeSeconds");
 
@@ -312,17 +339,15 @@ public class ParseJson{
                     JSONObject priceObj=itemJson.getJSONObject("price");
                     String itemPrice=priceObj.getString("amount");
 
-                    OptionItem curItem=ModelFactory.makeOptionItem(itemID, itemName);
-                    curItem.setPrice(itemPrice);
-                    curItem.setCookTime(itemCookTime);
-                    items.add(curItem);
+                    OptionItem targetItem=(OptionItem) getIDMatch(itemID, targetGroup, ModelFactory.models.OptionItem);
+
+                    targetItem.setPrice(itemPrice);
+                    targetItem.setCookTime(itemCookTime);
+                    targetItem.setName(itemName);
                 }
 
-                OptionGroup curGroup=ModelFactory.makeOptionGroup(groupID, groupName, items);
-                groups.add(curGroup);
+                targetGroup.setName(groupName);
             }
-            return groups;
         }
-        return null;
     }
 }

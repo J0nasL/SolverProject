@@ -4,8 +4,9 @@ package Model;
  * Represents an option item
  */
 public class OptionItem extends ModelItem{
-    protected OptionItem(String id, String name){
-        super(id, name);
+
+    protected OptionItem(String id){
+        super(id);
     }
 
     @Override

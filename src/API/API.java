@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import Model.*;
+import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -106,21 +107,24 @@ public class API{
      *
      * @return Array of vendors with no children
      */
-    public ArrayList<Vendor> getLocations(){
+    public void getLocations(ArrayList<Vendor> vendors){
+        if (vendors==null){
+            vendors=new ArrayList<>();
+        }
         HttpResponse<String> response=connection.get(ConnectionURI.getURI(uri.locationsBusiness), headers);
-        return ParseJson.parseLocations(response);
+        ParseJson.parseLocations(response, vendors);
     }
 
-    public ArrayList<Vendor> getLocationsIndividually(String[] vendorIDs){
+    public void getLocationsIndividually(ArrayList<Vendor> vendors){
         //TODO change this to access concepts, because main page has no isOpen
         //if the result is an error, the vendor is not open
         ArrayList<Thread> threads=new ArrayList<>();
         ArrayList<RunnableConnection> connections=new ArrayList<>();
 
-        for (String vendorID: vendorIDs){
+        for (Vendor vendor: vendors){
             RunnableConnection c=new RunnableConnection(
                     RunnableConnection.method.POST,
-                    ConnectionURI.getURI(uri.locationMain + "/" + vendorID),
+                    ConnectionURI.getURI(uri.locationMain + "/" + vendor.id),
                     headers,
                     NO_BODY);
             Thread t=new Thread(c);
@@ -128,17 +132,15 @@ public class API{
             threads.add(t);
             t.start();
         }
-        ArrayList<Vendor> vendors=new ArrayList<>();
+
         try{
             for (int i=0; i < threads.size(); i++){
                 threads.get(i).join();
-                vendors.add(ParseJson.parseMain(connections.get(i).response));
+                ParseJson.parseMain(connections.get(i).response, vendors.get(i));
             }
-            return vendors;
         } catch (InterruptedException e){
             e.printStackTrace();
         }
-        return null;
     }
 
     /**
@@ -148,29 +150,29 @@ public class API{
      *
      * @return new Vendor instance
      */
-    public Vendor getVendorMain(String vendorID){
-        HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.locationMain + "/" + vendorID), headers,
+    public void getVendorMain(Vendor vendor){
+        HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.locationMain + "/" + vendor.id), headers,
                 NO_BODY); //body
         //TODO
         //i forgot why this comment is here
-        return ParseJson.parseMain(response);
+        ParseJson.parseMain(response,vendor);
     }
 
     /**
      * Retrieves information from the vendor concepts page
-     * Gets availability, name, menus and its children, and the current menuID
+     * Gets availability, name, menus and their categories, itemIDs, and the current menuID
      */
-    public Vendor getVendorConcepts(String vendorID){
-        HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.locationConcepts + vendorID), headers,
+    public void getVendorConcepts(Vendor vendor){
+        HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.locationConcepts + vendor.id), headers,
                 EMPTY_BODY);
 
-        return ParseJson.parseVendorConcept(response, vendorID);
+        ParseJson.parseVendorConcept(response, vendor);
     }
 
-    private JSONArray getPassableMenuData(String vendorID){
+    private JSONArray getPassableMenuData(Vendor vendor){
         //TODO this is an unnecessary extra call to concept page, find a way to reduce calls
         HttpResponse<String> response=connection.post(
-                ConnectionURI.getURI(uri.locationConcepts + vendorID),
+                ConnectionURI.getURI(uri.locationConcepts + vendor.id),
                 headers,
                 EMPTY_BODY);
 
@@ -180,9 +182,9 @@ public class API{
         return null;
     }
 
-    public String getCurMenuID(String vendorID){
-        JSONArray array=getPassableMenuData(vendorID);
-        if(array==null){return null;}
+    public void getCurMenuID(Vendor vendor){
+        JSONArray array=getPassableMenuData(vendor);
+        if(array==null){return;}
         JSONObject data=array.getJSONObject(0);
 
         String menuLocationID=data.getString("id");
@@ -198,21 +200,23 @@ public class API{
         //4 other key,value pairs to consider adding if the server returns a 500 error
 
         HttpResponse<String> response=connection.post(
-                ConnectionURI.getURI(uri.locationConcepts + vendorID + uri.menuAddon + menuLocationID),
+                ConnectionURI.getURI(uri.locationConcepts + vendor.id + uri.menuAddon + menuLocationID),
                 headers,
                 HttpRequest.BodyPublishers.ofString(bodyStr));
 
-        return ParseJson.parseMenuID(response);
+        ParseJson.parseMenuID(response, vendor);
     }
 
-    public MenuCategory getItems(Vendor v, MenuCategory category){
-        //TODO refactor all instance methods to take Vendor instead of vendorID?
+    public void getItems(Vendor v, MenuCategory category){
+        assert v.getCurrentMenu().children.contains(category); //make sure this category is a child of the given vendor
+        //not sure why it wouldn't be, but good to error check regardless
+
         JSONObject body=new JSONObject();
 
         JSONArray itemIds=new JSONArray();
-        for (ModelObject child: category.getChildren()){
+        for (ModelObject child: category.children){
             MenuItem item=(MenuItem) child;
-            itemIds.put(item.getID());
+            itemIds.put(item.id);
         }
         body.put("itemIds", itemIds);
         body.put("conceptId", v.menuLocationID);
@@ -226,23 +230,18 @@ public class API{
         HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.getItems), headers,
                 HttpRequest.BodyPublishers.ofString(body.toString()));
 
-        ArrayList<MenuItem> items=ParseJson.parseMenuItems(response);
-        if (items==null){
-            return null;
-        }
-        return ModelFactory.makeMenuCategory(category.getID(), null, items);
-
+        ParseJson.parseMenuItems(response,category);
 
     }
 
-    public ArrayList<OptionGroup> getItemOptions(MenuItem item){
+    public void getItemOptions(MenuItem item){
         //TODO i think i can skip getting the menu item if i just run this page with the item ids from concepts
         HttpResponse<String> response=connection.post(
-                ConnectionURI.getURI(uri.getItemInfo + item.getID()),
+                ConnectionURI.getURI(uri.getItemInfo + item.id),
                 headers,
                 EMPTY_BODY);
 
-        return ParseJson.parseItemOptions(response);
+        ParseJson.parseItemOptions(response, item);
     }
 
 }

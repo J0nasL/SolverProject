@@ -9,64 +9,58 @@ import java.util.ArrayList;
  */
 public abstract class ModelFactory{
 
+    public enum models{
+        Vendor,Menu,MenuCategory,MenuItem,OptionGroup,OptionItem
+    }
+
     /**
      * Creates an instance of Vendor which can contain Menu instances
      * This object is at the top of the object hierarchy
      *
-     * @param menus children of this object
      * @return the created instance
      */
-    public static Vendor makeVendor(String vendorID, String vendorName, ArrayList<Menu> menus){
-        Vendor v=new Vendor(vendorID, vendorName);
-        addChildren(v, menus);
+    public static Vendor makeVendor(String vendorID){
+        Vendor v=new Vendor(vendorID);
         return v;
     }
 
     /**
      * Creates an instance of Menu which can contain MenuCategory instances
      *
-     * @param categories children of this object
      * @return the created instance
      */
-    public static Menu makeMenu(String menuID, String menuName, ArrayList<MenuCategory> categories){
-        Menu m=new Menu(menuID, menuName);
-        addChildren(m, categories);
+    public static Menu makeMenu(String menuID){
+        Menu m=new Menu(menuID);
         return m;
     }
 
     /**
      * Creates an instance of MenuCategory which can contain MenuItem instances
      *
-     * @param items children of this object
      * @return the created instance
      */
-    public static MenuCategory makeMenuCategory(String categoryID, String categoryName, ArrayList<MenuItem> items){
-        MenuCategory c=new MenuCategory(categoryID, categoryName);
-        addChildren(c, items);
+    public static MenuCategory makeMenuCategory(String categoryID){
+        MenuCategory c=new MenuCategory(categoryID);
         return c;
     }
 
     /**
      * Creates an instance of MenuItem which can contain OptionGroup instances
      *
-     * @param options children of this object
      * @return the created instance
      */
-    public static MenuItem makeMenuItem(String itemID, String itemName, ArrayList<OptionGroup> options){
-        MenuItem i=new MenuItem(itemID, itemName);
-        addChildren(i,options);
+    public static MenuItem makeMenuItem(String itemID){
+        MenuItem i=new MenuItem(itemID);
         return i;
     }
 
     /**
      * Creates an instance of OptionGroup which can contain OptionItem instances
      *
-     * @param options children of this object
      * @return the created instance
      */
-    public static OptionGroup makeOptionGroup(String groupID, String groupName, ArrayList<OptionItem> options){
-        OptionGroup g=new OptionGroup(groupID,groupName);
-        addChildren(g,options);
+    public static OptionGroup makeOptionGroup(String groupID){
+        OptionGroup g=new OptionGroup(groupID);
         return g;
     }
 
@@ -76,21 +70,32 @@ public abstract class ModelFactory{
      *
      * @return the created instance
      */
-    public static OptionItem makeOptionItem(String optionID, String optionName){
-        //note that this does not add children
-        OptionItem i=new OptionItem(optionID,optionName);
+    public static OptionItem makeOptionItem(String optionID){
+        OptionItem i=new OptionItem(optionID);
         return i;
     }
 
     //TODO: see if OptionItem needs children to represent sub-options
 
-
-
     private static void addChildren(ModelObject obj, ArrayList<? extends ModelObject> children){
-        if (children!=null){
-            for (ModelObject c: children){
-                obj.addChild(c);
-            }
+        obj.children.addAll(children);
+    }
+
+    public static ModelObject makeSomeObject(String objectID, models model){
+        switch (model){
+            case Vendor:
+                return makeVendor(objectID);
+            case Menu:
+                return makeMenu(objectID);
+            case MenuCategory:
+                return makeMenuCategory(objectID);
+            case MenuItem:
+                return makeMenuItem(objectID);
+            case OptionGroup:
+                return makeOptionGroup(objectID);
+            case OptionItem:
+                return makeOptionItem(objectID);
         }
+        return null;
     }
 }

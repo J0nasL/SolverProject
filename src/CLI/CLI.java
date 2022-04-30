@@ -4,8 +4,10 @@ import API.API;
 import Model.*;
 import Storage.Storage;
 
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class CLI implements Listener<ModelObject, String>{
 
@@ -17,8 +19,8 @@ public class CLI implements Listener<ModelObject, String>{
 
     public static void main(String[] args){
         System.out.println("Started CLI");
-        if(args.length==1){
-            if(args[0].equals("true")){
+        if (args.length==1){
+            if (args[0].equals("true")){
                 System.out.println("DEBUG is ON");
                 DEBUG=true;
             }
@@ -58,13 +60,26 @@ public class CLI implements Listener<ModelObject, String>{
     }
 
     private void controller(){
-        while (true){
+        String[][] configInfo=api.getConfig();
+        Objects.requireNonNull(configInfo);
+        //TODO: save vendor info and query each vendor individually to remove the need for a call to locations
+        ArrayList<Vendor> vendors=new ArrayList<>();
+        api.getLocations(vendors);
 
-            String[][] configInfo=api.getConfig();
-            if (configInfo==null){
+        while (true){
+            Vendor v=chooseVendor(vendors);
+            if (v==null){
                 break;
+            } else{
+                loop(v);
             }
-            Vendor v=showVendorOptions(configInfo[1]);
+        }
+
+
+        /*while (true){
+
+
+            Vendor v=chooseVendor(vendors);
             if (v==null){
                 break;
             }
@@ -72,26 +87,26 @@ public class CLI implements Listener<ModelObject, String>{
 
             //TODO have these calls run at the same time
             //maybe only 1 public method in the api for both?
-            Vendor data=api.getVendorMain(v.getID());
+            Vendor data=api.getVendorMain(v.id);
             if (data!=null){
                 v.mergeModel(data);
             }
             if(v.isOpen()){
                 //this method will return an error code if the vendor is closed
-                Vendor concept=api.getVendorConcepts(v.getID());
+                Vendor concept=api.getVendorConcepts(v.id);
                 if (concept!=null){
                     v.mergeModel(concept);
                 }
             }
-            v.setCurrentMenuID(api.getCurMenuID(v.getID()));
-            MenuCategory chosenCategory=showMenuOptions(v);
+            v.setCurrentMenuID(api.getCurMenuID(v.id));
+            MenuCategory chosenCategory=chooseMenu(v);
             if (chosenCategory!=null){
                 System.out.println("Showing categories for " + chosenCategory.getName());
                 //this will also merge the items into the vendor that owns the category
                 MenuCategory itemModel=api.getItems(v, chosenCategory);
                 if (itemModel!=null){
                     chosenCategory.mergeModel(itemModel);
-                    MenuItem chosenItem=showItemOptions(chosenCategory);
+                    MenuItem chosenItem=chooseItem(chosenCategory);
                     if (chosenItem!=null){
 
                         System.out.println("Chosen item: " + chosenItem.getName());
@@ -102,8 +117,20 @@ public class CLI implements Listener<ModelObject, String>{
             }
             //for now, break
             break;
-        }
+        }*/
         System.out.println("Exiting.");
+    }
+
+    private void loop(ModelObject m){
+        ModelObject res=chooseObject(m);
+        if (res!=null){
+            if (res.children!=null){
+                loop(res);
+            }
+            else{
+                //TODO
+            }
+        }
     }
 
     private void debug(){
@@ -122,9 +149,9 @@ public class CLI implements Listener<ModelObject, String>{
             boolean isEven=i % 2==0;
             long start=System.currentTimeMillis();
             if (isEven){
-                api.getLocations();
+                api.getLocations(new ArrayList<>());
             } else{
-                api.getLocationsIndividually(vendorIDs);
+                api.getLocationsIndividually(new ArrayList<>());
             }
             long end=System.currentTimeMillis();
             if (isEven){
@@ -137,49 +164,6 @@ public class CLI implements Listener<ModelObject, String>{
             System.out.println("Average lumped: " + (groupSum / groupTotal) + "ms, total=" + (groupTotal));
             if (indTotal > 0){
                 System.out.println("Average Individual: " + (indSum / indTotal) + "ms, total=" + (indTotal));
-            }
-        }
-    }
-
-    /**
-     * Gets a list of vendors and their statuses, lets the user choose one
-     *
-     * @return chosen vendors
-     */
-    private Vendor showVendorOptions(String[] vendorIDs){
-        int numberOffset=1;
-        //TODO: save vendor info and query each vendor individually to remove the need for a call to locations
-        ArrayList<Vendor> vendors=api.getLocations();
-        if (vendors==null){
-            return null;
-        }
-
-        vendors.sort(Vendor::compareTo);
-        ArrayList<ModelObject> openVendors=new ArrayList<>();
-        ArrayList<ModelObject> closedVendors=new ArrayList<>();
-        for (Vendor vendor: vendors){
-            if (vendor.isOpen()){
-                openVendors.add(vendor);
-            } else{
-                closedVendors.add(vendor);
-            }
-        }
-        System.out.println("Open vendors:");
-        objectPrint(openVendors, numberOffset);
-        System.out.println("\nClosed vendors:");
-        objectPrint(closedVendors, numberOffset + openVendors.size());
-
-        while (true){
-            int res=Choice.chooseInt("\nChoose a vendor (" + Choice.ERROR_INT + " to exit):");
-            if (res==Choice.ERROR_INT){
-                return null;
-            }
-            res-=numberOffset;
-            if (res < openVendors.size()){
-                return (Vendor) openVendors.get(res);
-            } else if (res < openVendors.size() + closedVendors.size()){
-                res-=openVendors.size();
-                return (Vendor) closedVendors.get(res);
             }
         }
     }
@@ -210,64 +194,77 @@ public class CLI implements Listener<ModelObject, String>{
     }
 
     /**
-     * Gets a list of menu categories, lets the user choose one
+     * Gets a list of vendors and their statuses, lets the user choose one
      *
-     * @return chosen category
+     * @return chosen vendors
      */
-    private MenuCategory showMenuOptions(Vendor vendor){
-        //TODO make numberOffset a static final global somewhere
-        Menu curMenu=vendor.getCurrentMenu();
-        System.out.println("Current menu: " + curMenu.getName());
-        ArrayList<ModelObject> categories=curMenu.getChildren();
-        categories.sort(ModelObject::compareTo);
-        //TODO sort alphabetically, not by ID
-
-        System.out.println("Categories:");
-        objectPrint(categories, NUMBER_OFFSET);
-        Integer choice=getChoice(NUMBER_OFFSET, categories.size());
-        if (choice==null){
-            return null;
+    private Vendor chooseVendor(ArrayList<Vendor> vendors){
+        vendors.sort(Vendor::compareTo);
+        ArrayList<ModelObject> openVendors=new ArrayList<>();
+        ArrayList<ModelObject> closedVendors=new ArrayList<>();
+        for (Vendor vendor: vendors){
+            if (vendor.isOpen()){
+                openVendors.add(vendor);
+            } else{
+                closedVendors.add(vendor);
+            }
         }
-        return (MenuCategory) categories.get(choice);
+        System.out.println("Open vendors:");
+        objectPrint(openVendors, NUMBER_OFFSET);
+        System.out.println("\nClosed vendors:");
+        objectPrint(closedVendors, NUMBER_OFFSET + openVendors.size());
+
+        while (true){
+            Integer res=getChoice(NUMBER_OFFSET, closedVendors.size() + openVendors.size());
+            if (res==null){
+                return null;
+            }
+            if (res < openVendors.size()){
+                return (Vendor) openVendors.get(res);
+            } else if (res < openVendors.size() + closedVendors.size()){
+                res-=openVendors.size();
+                return (Vendor) closedVendors.get(res);
+            }
+        }
     }
 
-    private MenuItem showItemOptions(MenuCategory category){
-        //TODO make numberOffset a static final global somewhere
-        System.out.println("Current category: " + category.getName());
-        ArrayList<ModelObject> items=category.getChildren();
+    private ModelObject chooseObject(ModelObject parent){
+        System.out.println("Current selection: " + parent.getName());
+        ArrayList<ModelObject> items=parent.children;
+        if (items==null){
+            return null;
+        }
         items.sort(ModelObject::compareTo);
         //TODO sort alphabetically, not by ID
-        System.out.println("Items:");
+        System.out.println("Options:");
         objectPrint(items, NUMBER_OFFSET);
         Integer choice=getChoice(NUMBER_OFFSET, items.size());
         if (choice==null){
             return null;
         }
-        return (MenuItem) items.get(choice);
+        return items.get(choice);
+    }
+
+    /**
+     * Gets a list of menu categories, lets the user choose one
+     *
+     * @return chosen category
+     */
+    private MenuCategory chooseMenu(Vendor vendor){
+        return (MenuCategory) chooseObject(vendor);
+    }
+
+    private MenuItem chooseItem(MenuCategory category){
+        return (MenuItem) chooseObject(category);
+    }
+
+    private OptionGroup chooseOptionGroup(MenuItem item){
+        return (OptionGroup) chooseObject(item);
     }
 
     private void listenerTest(ModelObject m){
         m.addListener(this);
         m.testChange();
-    }
-
-    /**
-     * This just tests whether the model factory arguments are correct
-     * If there are no errors then everything is fine
-     */
-    @Deprecated
-    private void modelTest(){
-        //also need to test itemoption
-        MenuItem i=ModelFactory.makeMenuItem("0", "Itm",null);
-        ArrayList<MenuItem> items=new ArrayList<>(List.of(i));
-
-        MenuCategory j=ModelFactory.makeMenuCategory("1", "Cat", items);
-
-        Menu m=ModelFactory.makeMenu("2", "Menu", new ArrayList<>(List.of(j)));
-
-        Vendor v=ModelFactory.makeVendor("4", "Vendor", new ArrayList<>(List.of(m)));
-
-        System.out.println(v);
     }
 
     @Override

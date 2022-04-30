@@ -1,19 +1,29 @@
 package Model;
 
+import API.API;
+
 /**
  * Represents a vendor with at least one Menu
  */
-public class Vendor extends ModelItem{
+public class Vendor extends ModelObject{
 
     private Boolean isOpen=null;
     private String currentMenuID=null;
     public String menuLocationID=null;
+    //TODO are these needed?
     public String terminalID=null;
     public String profitCenterID=null;
 
 
-    protected Vendor(String id, String name){
-        super(id, name);
+    protected Vendor(String id){
+        super(id);
+    }
+
+    @Override
+    public void forceBuildChildren(API api){
+        //TODO
+        //mergeModel(api.getVendorConcepts(id));
+        //mergeModel(api.getVendorMain(id));
     }
 
     public Boolean isOpen(){
@@ -45,10 +55,10 @@ public class Vendor extends ModelItem{
     }
 
     private Menu getMenu(String menuID){
-        if (hasChildren()){
-            for (ModelObject m: getChildren()){
+        if (children!=null){
+            for (ModelObject m: children){
                 if (m instanceof Menu){
-                    if (m.getID().equals(menuID)){
+                    if (m.id.equals(menuID)){
                         return (Menu) m;
                     }
                 }
