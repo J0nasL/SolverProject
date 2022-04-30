@@ -11,12 +11,18 @@ public class CLI implements Listener<ModelObject, String>{
 
     public static API api;
     private static Storage storage;
-    private static final boolean DEBUG=false;
+    private static boolean DEBUG=false;
     private String VendorIDs;
     private static final int NUMBER_OFFSET=1;
 
     public static void main(String[] args){
         System.out.println("Started CLI");
+        if(args.length==1){
+            if(args[0].equals("true")){
+                System.out.println("DEBUG is ON");
+                DEBUG=true;
+            }
+        }
         CLI inst=new CLI();
 
         if (DEBUG){
@@ -67,30 +73,33 @@ public class CLI implements Listener<ModelObject, String>{
             //TODO have these calls run at the same time
             //maybe only 1 public method in the api for both?
             Vendor data=api.getVendorMain(v.getID());
-            Vendor concept=api.getVendorConcepts(v.getID());
             if (data!=null){
                 v.mergeModel(data);
+            }
+            if(v.isOpen()){
+                //this method will return an error code if the vendor is closed
+                Vendor concept=api.getVendorConcepts(v.getID());
                 if (concept!=null){
                     v.mergeModel(concept);
+                }
+            }
+            v.setCurrentMenuID(api.getCurMenuID(v.getID()));
+            MenuCategory chosenCategory=showMenuOptions(v);
+            if (chosenCategory!=null){
+                System.out.println("Showing categories for " + chosenCategory.getName());
+                //this will also merge the items into the vendor that owns the category
+                MenuCategory itemModel=api.getItems(v, chosenCategory);
+                if (itemModel!=null){
+                    chosenCategory.mergeModel(itemModel);
+                    MenuItem chosenItem=showItemOptions(chosenCategory);
+                    if (chosenItem!=null){
 
-                    v.setCurrentMenuID(api.getCurMenuID(v.getID()));
-                    MenuCategory chosenCategory=showMenuOptions(v);
-                    if (chosenCategory!=null){
-                        System.out.println("Showing data for " + chosenCategory.getName());
-                        //this will also merge the items into the vendor that owns the category
-                        MenuCategory itemModel=api.getItems(v, chosenCategory);
-                        if (itemModel!=null){
-                            chosenCategory.mergeModel(itemModel);
-                            MenuItem chosenItem=showItemOptions(chosenCategory);
-                            if (chosenItem!=null){
+                        System.out.println("Chosen item: " + chosenItem.getName());
 
-                                System.out.println("Chosen item: " + chosenItem.getName());
-                            }
-                        }
+                        System.out.println(api.getItemOptions(chosenItem));
                     }
                 }
             }
-
             //for now, break
             break;
         }
@@ -248,7 +257,8 @@ public class CLI implements Listener<ModelObject, String>{
      */
     @Deprecated
     private void modelTest(){
-        MenuItem i=ModelFactory.makeMenuItem("0", "Itm");
+        //also need to test itemoption
+        MenuItem i=ModelFactory.makeMenuItem("0", "Itm",null);
         ArrayList<MenuItem> items=new ArrayList<>(List.of(i));
 
         MenuCategory j=ModelFactory.makeMenuCategory("1", "Cat", items);

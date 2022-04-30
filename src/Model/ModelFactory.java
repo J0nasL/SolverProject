@@ -47,18 +47,44 @@ public abstract class ModelFactory{
     }
 
     /**
-     * Creates an instance of MenuItem with the provided properties
-     * Note that no children are added because this is the lowest item on the hierarchy
+     * Creates an instance of MenuItem which can contain OptionGroup instances
      *
-     * @return the created item
+     * @param options children of this object
+     * @return the created instance
      */
-    public static MenuItem makeMenuItem(String itemID, String itemName){
-        //TODO: add more values like price
-        //note that this does not add children
-        return new MenuItem(itemID, itemName);
+    public static MenuItem makeMenuItem(String itemID, String itemName, ArrayList<OptionGroup> options){
+        MenuItem i=new MenuItem(itemID, itemName);
+        addChildren(i,options);
+        return i;
     }
 
-    //TODO: MenuItem needs children to represent options for the items
+    /**
+     * Creates an instance of OptionGroup which can contain OptionItem instances
+     *
+     * @param options children of this object
+     * @return the created instance
+     */
+    public static OptionGroup makeOptionGroup(String groupID, String groupName, ArrayList<OptionItem> options){
+        OptionGroup g=new OptionGroup(groupID,groupName);
+        addChildren(g,options);
+        return g;
+    }
+
+    /**
+     * Creates an instance of OptionItem with the provided properties
+     * Note that no children are added because this is the lowest item on the hierarchy
+     *
+     * @return the created instance
+     */
+    public static OptionItem makeOptionItem(String optionID, String optionName){
+        //note that this does not add children
+        OptionItem i=new OptionItem(optionID,optionName);
+        return i;
+    }
+
+    //TODO: see if OptionItem needs children to represent sub-options
+
+
 
     private static void addChildren(ModelObject obj, ArrayList<? extends ModelObject> children){
         if (children!=null){

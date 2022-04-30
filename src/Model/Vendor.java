@@ -3,7 +3,7 @@ package Model;
 /**
  * Represents a vendor with at least one Menu
  */
-public class Vendor extends ModelObject{
+public class Vendor extends ModelItem{
 
     private Boolean isOpen=null;
     private String currentMenuID=null;
@@ -59,7 +59,7 @@ public class Vendor extends ModelObject{
 
     @Override
     public String toString(){
-        return "Vendor(isOpen(): " + isOpen + ", currentMenuID:" + currentMenuID + ", menuLocationID:" + menuLocationID + ", " + super.toString() + ")";
+        return "Vendor(isOpen: " + isOpen + ", currentMenuID:" + currentMenuID + ", menuLocationID:" + menuLocationID + ", " + super.toString() + ")";
     }
 
     @Override

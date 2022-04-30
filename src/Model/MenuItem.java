@@ -1,6 +1,10 @@
 package Model;
 
-public class MenuItem extends ModelObject{
+/**
+ * Represents an item that can contain OptionGroups
+ */
+public class MenuItem extends ModelItem{
+
     protected MenuItem(String id, String name){
         super(id, name);
     }

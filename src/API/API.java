@@ -1,26 +1,25 @@
 package API;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import Model.*;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 public class API{
 
     private static final Connection connection=new Connection();
+    private static final HttpRequest.BodyPublisher EMPTY_BODY=HttpRequest.BodyPublishers.ofString("{}");
+    private static final HttpRequest.BodyPublisher NO_BODY=HttpRequest.BodyPublishers.noBody();
     private static ConnectionURI uri;
 
     private final String token;
     private final String[] headers;
+
 
     public API(String token, String businessID, String contextID){
         uri=new ConnectionURI(businessID, contextID);
@@ -119,8 +118,11 @@ public class API{
         ArrayList<RunnableConnection> connections=new ArrayList<>();
 
         for (String vendorID: vendorIDs){
-            RunnableConnection c=new RunnableConnection(RunnableConnection.method.POST, ConnectionURI.getURI(uri.locationMain + "/" + vendorID), headers,
-                    HttpRequest.BodyPublishers.noBody());
+            RunnableConnection c=new RunnableConnection(
+                    RunnableConnection.method.POST,
+                    ConnectionURI.getURI(uri.locationMain + "/" + vendorID),
+                    headers,
+                    NO_BODY);
             Thread t=new Thread(c);
             connections.add(c);
             threads.add(t);
@@ -148,7 +150,7 @@ public class API{
      */
     public Vendor getVendorMain(String vendorID){
         HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.locationMain + "/" + vendorID), headers,
-                HttpRequest.BodyPublishers.noBody());
+                NO_BODY); //body
         //TODO
         //i forgot why this comment is here
         return ParseJson.parseMain(response);
@@ -160,15 +162,17 @@ public class API{
      */
     public Vendor getVendorConcepts(String vendorID){
         HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.locationConcepts + vendorID), headers,
-                HttpRequest.BodyPublishers.ofString("{}"));
+                EMPTY_BODY);
 
         return ParseJson.parseVendorConcept(response, vendorID);
     }
 
     private JSONArray getPassableMenuData(String vendorID){
         //TODO this is an unnecessary extra call to concept page, find a way to reduce calls
-        HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.locationConcepts + vendorID), headers,
-                HttpRequest.BodyPublishers.ofString("{}"));
+        HttpResponse<String> response=connection.post(
+                ConnectionURI.getURI(uri.locationConcepts + vendorID),
+                headers,
+                EMPTY_BODY);
 
         if (response.statusCode()==Connection.OK_STATUS){
             return new JSONArray(response.body());
@@ -193,7 +197,9 @@ public class API{
         String bodyStr=body.toString();
         //4 other key,value pairs to consider adding if the server returns a 500 error
 
-        HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.locationConcepts + vendorID + uri.menuAddon + menuLocationID), headers,
+        HttpResponse<String> response=connection.post(
+                ConnectionURI.getURI(uri.locationConcepts + vendorID + uri.menuAddon + menuLocationID),
+                headers,
                 HttpRequest.BodyPublishers.ofString(bodyStr));
 
         return ParseJson.parseMenuID(response);
@@ -215,8 +221,7 @@ public class API{
         //body.put("onDemandTerminalId", v`.terminalID);
         //body.put("profitCenterId", v.profitCenterID);
         //body.put("storePriceLevel", "1");
-        //body.put("currencyUnit", "USD");`
-
+        //body.put("currencyUnit", "USD");
         //TODO figure out how to leave as JSON
         HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.getItems), headers,
                 HttpRequest.BodyPublishers.ofString(body.toString()));
@@ -228,6 +233,16 @@ public class API{
         return ModelFactory.makeMenuCategory(category.getID(), null, items);
 
 
+    }
+
+    public ArrayList<OptionGroup> getItemOptions(MenuItem item){
+        //TODO i think i can skip getting the menu item if i just run this page with the item ids from concepts
+        HttpResponse<String> response=connection.post(
+                ConnectionURI.getURI(uri.getItemInfo + item.getID()),
+                headers,
+                EMPTY_BODY);
+
+        return ParseJson.parseItemOptions(response);
     }
 
 }

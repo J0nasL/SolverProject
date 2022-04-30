@@ -4,6 +4,7 @@ import Model.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import javax.print.attribute.standard.JobSheets;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 
@@ -123,7 +124,7 @@ public class ParseJson{
                     JSONArray items=categoryItem.getJSONArray("items");
                     for (Object k: items){
                         String itemID=k.toString();
-                        menuItems.add(ModelFactory.makeMenuItem(itemID, null));
+                        menuItems.add(ModelFactory.makeMenuItem(itemID, null, null));
                     }
                     categories.add(ModelFactory.makeMenuCategory(categoryID, categoryName, menuItems));
                 }
@@ -188,7 +189,7 @@ public class ParseJson{
                 //TODO figure out which of these are important
                 //very important to make sure items will be sent back to the server as they should be
                 //otherwise it might result in incorrect items added to the cart or receipt
-                //TODO what are the fields attributes and childGroups for?
+                //TODO what is the field attributes for?
 
                 //ids
                 String id=object.getString("id");
@@ -224,10 +225,103 @@ public class ParseJson{
                 boolean isDeleted=object.getBoolean("isDeleted");
                 assert (!isDeleted);
 
-                items.add(ModelFactory.makeMenuItem(id, displayText));
+                //contains ids of OptionGroups
+                JSONArray childGroups=object.getJSONArray("childGroups");
+
+                ArrayList<OptionGroup> optionGroups=new ArrayList<>();
+
+                for(Object obj:childGroups){
+                    JSONObject groupJSON=(JSONObject) obj;
+                    String groupID=groupJSON.getString("id");
+                    optionGroups.add(ModelFactory.makeOptionGroup(groupID,null,null));
+                }
+
+                MenuItem curItem=ModelFactory.makeMenuItem(id, displayText, optionGroups);
+                curItem.setCookTime(cookTime);
+                curItem.setPrice(price);
+
+                items.add(curItem);
 
             }
             return items;
+        }
+        return null;
+    }
+
+    public static ArrayList<OptionGroup> parseItemOptions(HttpResponse<String> response){
+        //todo make this parse the whole item? is that a good idea?
+        //calling parseMenuItems() would be easy
+
+        if (response.statusCode()==Connection.OK_STATUS){
+            JSONObject body=new JSONObject(response.body());
+
+            //This is where the OptionGroup is stored
+            JSONArray childGroups=body.getJSONArray("childGroups");
+
+            ArrayList<OptionGroup> groups=new ArrayList<>();
+
+            for (Object o: childGroups){
+                JSONObject groupJson=(JSONObject) o;
+
+                //ids
+                String groupID=groupJson.getString("id");
+                String groupType=groupJson.getString("groupType"); //TODO make an enum for this
+                String gID=groupJson.getString("groupId"); //some 3 digit number, not sure what this is for
+
+                //names
+                String groupName=groupJson.getString("name");
+                String groupDisplayName=groupJson.getString("displayName");
+                String terminalPrompt=groupJson.getString("terminalPrompt");
+                assert groupName.equals(terminalPrompt) && terminalPrompt.equals(groupDisplayName);
+
+                int groupMaximum=groupJson.getInt("maximum");
+                int groupMinimum=groupJson.getInt("minimum");
+
+
+                //this is where OptionItems are stored
+                JSONArray childItems=groupJson.getJSONArray("childItems");
+
+
+                ArrayList<OptionItem> items=new ArrayList<>();
+
+                for (Object obj: childItems){
+                    JSONObject itemJson=(JSONObject) obj;
+
+                    //ids
+                    String itemID=itemJson.getString("id");
+                    String iID=itemJson.getString("itemId"); //some 3 digit number, idk what for
+
+                    //names
+                    String itemName=itemJson.getString("name");
+                    String itemDisplayText=itemJson.getString("displayText");
+                    String itemKitchenDisplayText=itemJson.getString("kitchenDisplayText");
+                    String itemKitchenVideoLabel=itemJson.getString("kitchenVideoLabel");
+                    String itemKpText=itemJson.getString("kpText");
+                    String itemReceiptText=itemJson.getString("receiptText");
+                    assert (itemName.equals(itemDisplayText) &&
+                                    itemName.equals(itemKitchenDisplayText) &&
+                                    itemName.equals(itemKitchenVideoLabel) &&
+                                    itemName.equals(itemKpText) &&
+                                    itemName.equals(itemReceiptText)
+                            );
+
+                    int itemCookTime=itemJson.getInt("kitchenCookTimeSeconds");
+
+                    String itemType=itemJson.getString("itemType"); //TODO make enum
+
+                    JSONObject priceObj=itemJson.getJSONObject("price");
+                    String itemPrice=priceObj.getString("amount");
+
+                    OptionItem curItem=ModelFactory.makeOptionItem(itemID, itemName);
+                    curItem.setPrice(itemPrice);
+                    curItem.setCookTime(itemCookTime);
+                    items.add(curItem);
+                }
+
+                OptionGroup curGroup=ModelFactory.makeOptionGroup(groupID, groupName, items);
+                groups.add(curGroup);
+            }
+            return groups;
         }
         return null;
     }
