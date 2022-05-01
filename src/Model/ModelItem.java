@@ -7,13 +7,14 @@ import java.util.ArrayList;
  * and can be purchased and served through OnDemand.
  */
 public abstract class ModelItem extends ModelObject{
-    private Boolean isAvailable;
+    private boolean isAvailable=false;
     private String price;
     private int cookTime;
     protected ModelItem(String id){
         super(id);
     }
     public static String SELECTED_STR="✓";
+    public static String UNAVAILABLE_STR=" (Removed)";
     private boolean selected=false; //whether the user has chosen this option
 
     public void select(){
@@ -26,7 +27,7 @@ public abstract class ModelItem extends ModelObject{
 
     @Override
     public String getName(){
-        return super.getName()+(selected?SELECTED_STR:"");
+        return super.getName()+(selected?SELECTED_STR:"")+(!isAvailable?UNAVAILABLE_STR:"");
     }
 
     public void setPrice(String amount){
@@ -39,7 +40,7 @@ public abstract class ModelItem extends ModelObject{
         this.isAvailable=isAvailable;
     }
 
-    public Boolean getAvailable(){return isAvailable;}
+    public boolean getAvailable(){return isAvailable;}
 
     public void setCookTime(int seconds){
         cookTime=seconds;

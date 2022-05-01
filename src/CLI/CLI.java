@@ -13,7 +13,7 @@ import java.util.Objects;
 
 public class CLI implements Listener<ModelObject, String>{
 
-    public static API api;
+    private static API api;
     private static Storage storage;
     private static boolean DEBUG=false;
     private String VendorIDs;

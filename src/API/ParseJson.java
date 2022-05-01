@@ -273,8 +273,10 @@ public class ParseJson{
                 int cookTime=object.getInt("kitchenCookTimeSeconds");
 
                 //is available
-                boolean isDeleted=object.getBoolean("isDeleted");
-                assert (!isDeleted);
+                //boolean isDeleted=object.getBoolean("isDeleted");
+                //assert (!isDeleted);
+                boolean isItemAvailable=object.getBoolean("isAvailableToGuests");
+
 
                 MenuItem targetItem=(MenuItem) getIDMatch(itemID, category, ModelFactory.models.MenuItem);
 
@@ -285,6 +287,9 @@ public class ParseJson{
                     JSONObject groupJSON=(JSONObject) obj;
                     String groupID=groupJSON.getString("id");
 
+                    boolean isGroupAvailable=groupJSON.getBoolean("isAvailableToGuests");
+                    assert isGroupAvailable;
+
                     OptionGroup targetGroup=(OptionGroup) getIDMatch(groupID, targetItem, ModelFactory.models.OptionGroup);
                 }
 
@@ -292,6 +297,7 @@ public class ParseJson{
                 targetItem.setCookTime(cookTime);
                 targetItem.setPrice(price);
                 targetItem.setDescription(desc);
+                targetItem.setAvailability(isItemAvailable);
             }
         }
     }
@@ -373,6 +379,7 @@ public class ParseJson{
                     targetItem.setPrice(itemPrice);
                     targetItem.setCookTime(itemCookTime);
                     targetItem.setName(itemName);
+                    targetItem.setAvailability(isAvailable);
                 }
 
                 targetGroup.setName(groupName);
