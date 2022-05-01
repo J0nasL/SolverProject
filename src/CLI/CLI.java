@@ -3,7 +3,9 @@ package CLI;
 import API.API;
 import Model.*;
 import Storage.Storage;
+import org.jetbrains.annotations.Nullable;
 
+import javax.swing.text.html.Option;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,6 +56,7 @@ public class CLI implements Listener<ModelObject, String>{
             //API.getIDs(token);
             //TODO store ids for later?
             api=API.getInstance(token);
+            assert api!=null;
         } else{
             System.out.println("Could not get access token");
         }
@@ -65,72 +68,49 @@ public class CLI implements Listener<ModelObject, String>{
         //TODO: save vendor info and query each vendor individually to remove the need for a call to locations
         ArrayList<Vendor> vendors=new ArrayList<>();
         api.getLocations(vendors);
+        boolean browse=true;
 
-        while (true){
-            Vendor v=chooseVendor(vendors);
-            if (v==null){
-                break;
-            } else{
-                loop(v);
-            }
-        }
-
-
-        /*while (true){
-
-
+        while (browse){
             Vendor v=chooseVendor(vendors);
             if (v==null){
                 break;
             }
-            System.out.println("Showing data for " + v.getName());
+            api.getVendorMain(v);
+            api.getVendorConcepts(v);
+            api.getCurMenuID(v);
 
-            //TODO have these calls run at the same time
-            //maybe only 1 public method in the api for both?
-            Vendor data=api.getVendorMain(v.id);
-            if (data!=null){
-                v.mergeModel(data);
-            }
-            if(v.isOpen()){
-                //this method will return an error code if the vendor is closed
-                Vendor concept=api.getVendorConcepts(v.id);
-                if (concept!=null){
-                    v.mergeModel(concept);
+
+            while (browse){
+                MenuCategory cat=(MenuCategory) chooseObject(v.getCurrentMenu());
+                if (cat==null){
+                    break;
                 }
-            }
-            v.setCurrentMenuID(api.getCurMenuID(v.id));
-            MenuCategory chosenCategory=chooseMenu(v);
-            if (chosenCategory!=null){
-                System.out.println("Showing categories for " + chosenCategory.getName());
-                //this will also merge the items into the vendor that owns the category
-                MenuCategory itemModel=api.getItems(v, chosenCategory);
-                if (itemModel!=null){
-                    chosenCategory.mergeModel(itemModel);
-                    MenuItem chosenItem=chooseItem(chosenCategory);
-                    if (chosenItem!=null){
-
-                        System.out.println("Chosen item: " + chosenItem.getName());
-
-                        System.out.println(api.getItemOptions(chosenItem));
+                api.getItems(v, cat);
+                while (browse){
+                    MenuItem i=(MenuItem) chooseObject(cat);
+                    if (i==null){
+                        break;
+                    }
+                    api.addToCart(i); //for testing
+                    api.getItemOptions(i);
+                    while (browse){
+                        OptionGroup g=(OptionGroup) chooseObject(i);
+                        if(g==null){
+                            break;
+                        }
+                        while (browse){
+                            OptionItem o=(OptionItem) chooseObject(g);
+                            if(o==null){
+                                break;
+                            }
+                            o.select();
+                            //browse=false;
+                        }
                     }
                 }
             }
-            //for now, break
-            break;
-        }*/
-        System.out.println("Exiting.");
-    }
-
-    private void loop(ModelObject m){
-        ModelObject res=chooseObject(m);
-        if (res!=null){
-            if (res.children!=null){
-                loop(res);
-            }
-            else{
-                //TODO
-            }
         }
+        System.out.println("Exiting.");
     }
 
     private void debug(){
@@ -173,23 +153,28 @@ public class CLI implements Listener<ModelObject, String>{
             System.out.println("none");
         } else{
             for (int i=0; i < objects.size(); i++){
-                System.out.println(i + numberOffset + ": " + objects.get(i).getName());
+                String name=objects.get(i).getName();
+                System.out.println(i + numberOffset + ": " + name);
             }
         }
     }
 
-    private Integer getChoice(int numberOffset, int arraySize){
+    @Nullable
+    private Integer getChoice(int numberOffset, int arraySize, int lowBound){
         //TODO refactor showVendorOptions to use this method
+        System.out.println();
         while (true){
-            int res=Choice.chooseInt("\nChoose one (" + Choice.ERROR_INT + " to exit):");
+            int res=Choice.chooseInt("Choose (" + Choice.ERROR_INT + " to exit):");
             if (res==Choice.ERROR_INT){
                 return null;
             }
             res-=numberOffset;
-            if (res < arraySize && res >= 0){
+            lowBound-=numberOffset;
+            if (res < arraySize && res >= lowBound){
                 System.out.println();
                 return res;
             }
+            System.out.println("Invalid selection");
         }
     }
 
@@ -198,6 +183,7 @@ public class CLI implements Listener<ModelObject, String>{
      *
      * @return chosen vendors
      */
+    @Nullable
     private Vendor chooseVendor(ArrayList<Vendor> vendors){
         vendors.sort(Vendor::compareTo);
         ArrayList<ModelObject> openVendors=new ArrayList<>();
@@ -215,7 +201,7 @@ public class CLI implements Listener<ModelObject, String>{
         objectPrint(closedVendors, NUMBER_OFFSET + openVendors.size());
 
         while (true){
-            Integer res=getChoice(NUMBER_OFFSET, closedVendors.size() + openVendors.size());
+            Integer res=getChoice(NUMBER_OFFSET, closedVendors.size() + openVendors.size(), NUMBER_OFFSET);
             if (res==null){
                 return null;
             }
@@ -228,38 +214,52 @@ public class CLI implements Listener<ModelObject, String>{
         }
     }
 
+    @Nullable
     private ModelObject chooseObject(ModelObject parent){
+        boolean canSelect=parent instanceof ModelItem;
+        return chooseObject(parent,canSelect);
+    }
+
+    @Nullable
+    private ModelObject chooseObject(ModelObject parent, boolean canSelect){
+        if(parent==null){
+            return null;
+        }
         System.out.println("Current selection: " + parent.getName());
+        if(parent.getDescription()!=null){
+            System.out.println(parent.getDescription());
+        }
         ArrayList<ModelObject> items=parent.children;
         if (items==null){
             return null;
         }
         items.sort(ModelObject::compareTo);
         //TODO sort alphabetically, not by ID
-        System.out.println("Options:");
+        if(parent instanceof OptionGroup){
+            OptionGroup g=(OptionGroup) parent;
+            System.out.println(g.getChoiceText());
+        } else{
+            System.out.println("Options:");
+        }
+
+        int low=NUMBER_OFFSET;
+        if(canSelect){
+            //show an option for 0
+            System.out.println((NUMBER_OFFSET - 1) + ": Select current item");
+            low-=1;
+        }
         objectPrint(items, NUMBER_OFFSET);
-        Integer choice=getChoice(NUMBER_OFFSET, items.size());
+        Integer choice=getChoice(NUMBER_OFFSET, items.size(),low);
         if (choice==null){
             return null;
         }
+        if(canSelect && choice==NUMBER_OFFSET-2){
+            //if the user
+            ModelItem selectable=(ModelItem) parent;
+            selectable.select();
+            return null;
+        }
         return items.get(choice);
-    }
-
-    /**
-     * Gets a list of menu categories, lets the user choose one
-     *
-     * @return chosen category
-     */
-    private MenuCategory chooseMenu(Vendor vendor){
-        return (MenuCategory) chooseObject(vendor);
-    }
-
-    private MenuItem chooseItem(MenuCategory category){
-        return (MenuItem) chooseObject(category);
-    }
-
-    private OptionGroup chooseOptionGroup(MenuItem item){
-        return (OptionGroup) chooseObject(item);
     }
 
     private void listenerTest(ModelObject m){

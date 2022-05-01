@@ -8,24 +8,35 @@ import java.util.ArrayList;
  */
 public abstract class ModelItem extends ModelObject{
 
-    private String description;
     private String price;
     private int cookTime;
-
     protected ModelItem(String id){
         super(id);
+    }
+    public static String SELECTED_STR="✓";
+    private boolean selected=false; //whether the user has chosen this option
+
+    public void select(){
+        selected=!selected;
+    }
+
+    public boolean isSelected(){
+        return selected;
+    }
+
+    @Override
+    public String getName(){
+        return super.getName()+(selected?SELECTED_STR:"");
     }
 
     public void setPrice(String amount){
         price=amount;
     }
 
+    public String getPrice(){return price;}
+
     public void setCookTime(int seconds){
         cookTime=seconds;
-    }
-
-    public void setDescription(String description){
-        this.description=description;
     }
 
     @Override

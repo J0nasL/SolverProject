@@ -1,5 +1,8 @@
 package Model;
 
+import API.API;
+import org.jetbrains.annotations.NotNull;
+
 /**
  * Represents an item that can contain OptionGroups
  */

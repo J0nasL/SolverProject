@@ -24,6 +24,7 @@ public class ConnectionURI{
     public String menuAddon;
     public String getItems;
     public String getItemInfo;
+    public String cartAdd;
 
     public final String businessID;
     public final String tenantID;
@@ -52,13 +53,14 @@ public class ConnectionURI{
     private void populateURIs(){
         //TODO make a separate locations variable specifically for 1312 document
         apiAddon="/api/sites/";
-        locationsBusiness=apiAddon + businessID; //dc9df36d-8a64-42cf-b7c1-fa041f5f3cfd
         locationsTenant=apiAddon + tenantID; //1312
+        locationsBusiness=apiAddon + businessID; //dc9df36d-8a64-42cf-b7c1-fa041f5f3cfd
         locationsCombined=locationsTenant + "/" + businessID; //...tenantID/businessID
         locationMain=locationsBusiness; //add the vendor id
         locationConcepts=locationsBusiness + "/" + businessID + "/concepts/"; //add the vendor id
         menuAddon="/menus/";
         getItems=locationsCombined + "/kiosk-items/get-items";
         getItemInfo=locationsCombined + "/kiosk-items/"; //add the itemID
+        cartAdd=apiAddon + "order/" + tenantID + businessID + "/orders";
     }
 }

@@ -19,13 +19,6 @@ public class Vendor extends ModelObject{
         super(id);
     }
 
-    @Override
-    public void forceBuildChildren(API api){
-        //TODO
-        //mergeModel(api.getVendorConcepts(id));
-        //mergeModel(api.getVendorMain(id));
-    }
-
     public Boolean isOpen(){
         return isOpen;
     }
@@ -72,28 +65,4 @@ public class Vendor extends ModelObject{
         return "Vendor(isOpen: " + isOpen + ", currentMenuID:" + currentMenuID + ", menuLocationID:" + menuLocationID + ", " + super.toString() + ")";
     }
 
-    @Override
-    public void mergeModel(ModelObject o1){
-        assert (o1 instanceof Vendor);
-        Vendor v=(Vendor) o1;
-        super.mergeModel(o1);
-        //merge isOpen
-        if (this.isOpen==null){
-            this.isOpen=v.isOpen;
-        }
-        //merge currentMenuID
-        if (this.currentMenuID==null){
-            this.currentMenuID=v.currentMenuID;
-        }
-        //merge menuLocationID
-        if (this.menuLocationID==null){
-            this.menuLocationID=v.menuLocationID;
-        }
-        if (this.terminalID==null){
-            this.terminalID=v.terminalID;
-        }
-        if (this.profitCenterID==null){
-            this.profitCenterID=v.profitCenterID;
-        }
-    }
 }

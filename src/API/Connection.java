@@ -6,6 +6,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * Connection file
@@ -16,6 +18,8 @@ import java.net.http.HttpResponse;
 public class Connection{
 
     public static final int OK_STATUS=200;
+    //public static final int RETRY_CODE=503;
+    public static final int MAX_RETRIES=3;
     public static final boolean PRINT_CONNECTIONS=true;
     private final HttpClient client;
     private boolean ignoreStatus=false;
@@ -62,19 +66,22 @@ public class Connection{
         if (PRINT_CONNECTIONS){
             System.out.println("Request to " + uri.toString());
         }
-        HttpResponse<String> response=null;
-        try{
-            HttpRequest request=builder.uri(uri).build();
-            response=client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode()!=OK_STATUS && !ignoreStatus){
-                System.out.println("Status code " + response.statusCode());
-                System.out.println(response.body());
+        for (int i=0; i <= MAX_RETRIES; i++){
+            HttpResponse<String> response=null;
+            try{
+                HttpRequest request=builder.uri(uri).build();
+                response=client.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode()!=OK_STATUS && !ignoreStatus){
+                    System.out.println("Status code " + response.statusCode());
+                    System.out.println(response.body());
+                } else {
+                    return response;
+                }
+            } catch (IOException | InterruptedException e){
+                e.printStackTrace();
             }
-        } catch (IOException | InterruptedException e){
-            e.printStackTrace();
+            System.out.println("Retrying...");
         }
-        return response;
+        return null;
     }
-
-
 }

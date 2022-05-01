@@ -244,4 +244,43 @@ public class API{
         ParseJson.parseItemOptions(response, item);
     }
 
+    public void addToCart(MenuItem menuItem){
+
+        JSONObject itemJSON=new JSONObject();
+        itemJSON.put("id",menuItem.id);
+
+        JSONObject price=new JSONObject();
+        price.put("amount",menuItem.getPrice());
+        itemJSON.put("price",price);
+
+        JSONArray modifiers=new JSONArray();
+
+        for(ModelObject o:menuItem.children){
+            OptionGroup group=(OptionGroup) o;
+
+            for (ModelObject o1:group.children){
+                OptionItem item=(OptionItem) o1;
+
+                if(item.isSelected()){
+                    JSONObject optionJSON=new JSONObject();
+
+                    optionJSON.put("id", item.id);
+                    optionJSON.put("selected", true); //is this ever false?
+                    optionJSON.put("amount",item.getPrice());
+                    optionJSON.put("parentGroupId",group.id);
+                    //TODO any need to add item and option names or video labels?
+                    modifiers.put(optionJSON);
+                }
+            }
+        }
+        itemJSON.put("selectedModifiers",modifiers);
+
+        /*
+        HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.cartAdd), headers,
+                HttpRequest.BodyPublishers.ofString(itemJSON.toString()));
+
+
+        */
+
+    }
 }

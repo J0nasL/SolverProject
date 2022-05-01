@@ -1,10 +1,12 @@
 package Model;
 
+import API.API;
+import org.jetbrains.annotations.NotNull;
+
 /**
  * Represents a menu that can contain MenuCategories
  */
 public class Menu extends ModelObject{
-    public String description=null;
 
     protected Menu(String id){
         super(id);

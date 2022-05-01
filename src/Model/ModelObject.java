@@ -11,18 +11,26 @@ import java.util.Objects;
 
 public abstract class ModelObject implements Comparable<ModelObject>{
     private final List<Listener<ModelObject, String>> listeners=new LinkedList<>();
+    private String description;
     public ArrayList<ModelObject> children=new ArrayList<>();
-    @NotNull public final String id;
-    @Nullable private String name;
+    @NotNull
+    public final String id;
+    @Nullable
+    private String name;
+
 
     protected ModelObject(@NotNull String id){
         this.id=id;
     }
 
+
     /**
      * Returns the name of this object
      */
     public @Nullable String getName(){
+        if(name==null){
+            return "removed";
+        }
         return name;
     }
 
@@ -33,37 +41,13 @@ public abstract class ModelObject implements Comparable<ModelObject>{
         this.name=name;
     }
 
-    /**
-     * Model view controller? Never heard of it.
-     * This method is implemented by every subclass of ModelObject
-     * Each subclass makes whatever calls to the provided api instance it needs
-     * in order to build its list of children. Note that this is not recursive.
-     *
-     * @param api API instance
-     */
-    //TODO
-    public /*abstract*/ void forceBuildChildren(@NotNull API api)/*;*/{}
-
-    /**
-     * Does the thing, RECURSIVELY
-     *
-     * @param api API instance
-     */
-    public void forceBuildRecursive(@NotNull API api){
-        forceBuildChildren(api);
-        if(children!=null){
-            for (ModelObject child: children){
-                forceBuildRecursive(api);
-            }
-        }
-    }
 
     /**
      * Returns a string representation of the given instance
      */
     @Override
     public String toString(){
-        StringBuilder res=new StringBuilder("ModelObject(id:" + id + ", name:" + name);
+        StringBuilder res=new StringBuilder("ModelObject(id:" + id + ", name:" + name + ", description:"+description);
         if (children!=null){
             res.append(", children:{");
             for (int i=0; i < children.size(); i++){
@@ -88,47 +72,9 @@ public abstract class ModelObject implements Comparable<ModelObject>{
         }
     }
 
-    /**
-     * Merge data from this object into the current object
-     *
-     * @param o1 Instance to get data from
-     */
-    public void mergeModel(ModelObject o1){
-        //TODO remove this, it's too complicated
-        Objects.requireNonNull(o1);
-        //ids must be the same
-        assert (o1.id.equals(this.id));
-
-        //inherit the shorter name
-        if (o1.name!=null){
-            if (this.name==null || o1.name.length() < this.name.length()){
-                this.name=o1.name;
-            }
-        }
-        //merge new children
-        if (o1.children!=null){
-            for (ModelObject otherChild: o1.children){
-                //whether a child with the same ID exists in this object's children
-                boolean childFound=false;
-                if(children!=null){
-                    for (ModelObject child: this.children){
-                        if (otherChild.id.equals(child.id)){
-                            child.mergeModel(otherChild);
-                            childFound=true;
-                            break;
-                        }
-                    }
-                }
-                if (!childFound){
-                    this.children.add(otherChild);
-                }
-            }
-        }
-    }
-
     @Override
     public boolean equals(Object o){
-        if(o instanceof ModelObject){
+        if (o instanceof ModelObject){
             ModelObject other=(ModelObject) o;
             return other.id.equals(this.id);
         }
@@ -140,13 +86,11 @@ public abstract class ModelObject implements Comparable<ModelObject>{
         return id.compareTo(other.id);
     }
 
-    public void addListener(Listener<ModelObject, String> listener){
-        this.listeners.add(listener);
+    public void setDescription(String description){
+        this.description=description;
     }
 
-    public void testChange(){
-        notifyListeners("test change on " + this);
-    }
+    public String getDescription(){return description;}
 
     /**
      * Whether the containing class is the lowest on the ModelObject hierarchy.
@@ -155,5 +99,13 @@ public abstract class ModelObject implements Comparable<ModelObject>{
      */
     public boolean isAtomic(){
         return false;
+    }
+
+    public void addListener(Listener<ModelObject, String> listener){
+        this.listeners.add(listener);
+    }
+
+    public void testChange(){
+        notifyListeners("test change on " + this);
     }
 }

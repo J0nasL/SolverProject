@@ -1,6 +1,7 @@
 package API;
 
 import Model.*;
+import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -66,6 +67,9 @@ public class ParseJson{
             //anonymous method to contain vendor objects
             //TODO make a class above Vendor to contain vendor objects
             ModelObject container=new ModelObject(""){
+                private void forceBuildChildren(@NotNull API api, ModelObject parent){
+
+                }
             };
             container.children.addAll(vendors);
 
@@ -95,7 +99,7 @@ public class ParseJson{
                 if (availableAt.has("conceptsAvailableNow")){
                     conceptsAvailable=availableAt.getBoolean("conceptsAvailableNow");
                 } else{
-                    System.out.println("Unable to parse concept for " + name + ":\n" + availableAt);
+                    System.out.println("Unable to parse concept for " + name + " (online ordering closed for break)");
                 }
                 //boolean isAvailable=cur_vendor.getBoolean("storeAvailableNow"); //this is always true for some reason TODO I did a spelling fix, see if it changes
 
@@ -157,7 +161,7 @@ public class ParseJson{
             for (Object i: menuJson){
                 JSONObject menuJSON=(JSONObject) i;
 
-                String description=menuJSON.getString("description"); //TODO store this?
+                String description=menuJSON.getString("description");
                 String menuID=menuJSON.getString("id");
                 String menuName=menuJSON.getString("name");
 
@@ -168,8 +172,20 @@ public class ParseJson{
                 for (Object j: categoryJson){
                     JSONObject categoryItem=(JSONObject) j;
 
-                    String categoryID=categoryItem.getString("categoryId");
+                    String categoryID=categoryItem.getString("categoryId"); //this is sometimes empty
+                    if(categoryID.isEmpty()){
+                        if(categoryItem.has("id")){
+                            String cID=categoryItem.getString("id"); //this sometimes is not present
+                            assert !categoryID.isEmpty();
+                            categoryID=cID;
+                        } else {
+                            categoryID=menuName;
+                        }
+                    }
+                    //TODO figure out why too few categories are showing up
+
                     String categoryName=categoryItem.getString("name");
+
                     //TODO:
                     //what does categoryOptions: {} do?
                     //what does itemIdToItemPropertiesMap: {} do?
@@ -190,7 +206,7 @@ public class ParseJson{
                 }
 
                 targetMenu.setName(menuName);
-                targetMenu.description=description;
+                targetMenu.setDescription(description);
             }
 
             vendor.setOpen(isOpen);
@@ -224,10 +240,12 @@ public class ParseJson{
                 //TODO what is the field attributes for?
 
                 //ids
-                String id=object.getString("id");
-                String videoID=object.getString("kitchenVideoId");
-                assert (id.equals(videoID));
-                String itemID=object.getString("itemId"); //not the same as the other two
+                String itemID=object.getString("id"); //the id that is given by the concepts item page
+                if(object.has("kitchenVideoId")){
+                    String videoID=object.getString("kitchenVideoId");
+                    assert (itemID.equals(videoID));
+                }
+                String iID=object.getString("itemId"); //a different id
 
                 //names
                 String displayText=object.getString("displayText"); //User-readable name
@@ -240,8 +258,9 @@ public class ParseJson{
 
 
                 //descriptions
+                String desc=null;
                 if (object.has("description")){
-                    String desc=object.getString("description");
+                    desc=object.getString("description");
                     String longDesc=object.getString("longDescription");
                     assert (desc.equals(longDesc));
                 }
@@ -266,12 +285,13 @@ public class ParseJson{
                     JSONObject groupJSON=(JSONObject) obj;
                     String groupID=groupJSON.getString("id");
 
-                    OptionGroup targetGroup=(OptionGroup) getIDMatch(groupID, targetItem, ModelFactory.models.OptionItem);
+                    OptionGroup targetGroup=(OptionGroup) getIDMatch(groupID, targetItem, ModelFactory.models.OptionGroup);
                 }
 
                 targetItem.setName(displayText);
                 targetItem.setCookTime(cookTime);
                 targetItem.setPrice(price);
+                targetItem.setDescription(desc);
             }
         }
     }
@@ -301,11 +321,18 @@ public class ParseJson{
                 assert groupName.equals(terminalPrompt) &&
                         terminalPrompt.equals(groupDisplayName);
 
-                int groupMaximum=groupJson.getInt("maximum"); //TODO add property for this
+                String groupDesc=null;
+                if(groupJson.has("description")){
+                    groupDesc=groupJson.getString("description");
+                }
+
                 int groupMinimum=groupJson.getInt("minimum");
+                int groupMaximum=groupJson.getInt("maximum");
 
                 OptionGroup targetGroup=(OptionGroup) getIDMatch(groupID, menuItem, ModelFactory.models.OptionGroup);
                 targetGroup.setName(groupName);
+                targetGroup.maximum=groupMaximum;
+                targetGroup.minimum=groupMinimum;
 
 
                 //this is where OptionItems are stored
@@ -347,7 +374,23 @@ public class ParseJson{
                 }
 
                 targetGroup.setName(groupName);
+                targetGroup.setDescription(groupDesc);
             }
+        }
+    }
+
+    public static void parseCartAdd(HttpResponse<String> response){
+        if (response.statusCode()==Connection.OK_STATUS){
+            JSONObject body=new JSONObject(response.body());
+
+            //TODO figure out what of this is useful
+            JSONObject details= body.getJSONObject("orderDetails");
+
+            String orderID=details.getString("orderID");
+            String orderNumber=details.getString("orderState");
+            String orderState=details.getString("orderNumber");
+            assert orderState=="OPEN";
+
         }
     }
 }
