@@ -76,7 +76,9 @@ public class CLI implements Listener<ModelObject, String>{
                 break;
             }
             api.getVendorMain(v);
-            api.getVendorConcepts(v);
+            if(v.isOpen()){
+                api.getVendorConcepts(v);
+            }
             api.getCurMenuID(v);
 
 
@@ -91,7 +93,7 @@ public class CLI implements Listener<ModelObject, String>{
                     if (i==null){
                         break;
                     }
-                    api.addToCart(i); //for testing
+                    //api.addToCart(i); //for testing
                     api.getItemOptions(i);
                     while (browse){
                         OptionGroup g=(OptionGroup) chooseObject(i);

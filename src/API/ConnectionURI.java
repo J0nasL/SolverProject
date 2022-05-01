@@ -61,6 +61,6 @@ public class ConnectionURI{
         menuAddon="/menus/";
         getItems=locationsCombined + "/kiosk-items/get-items";
         getItemInfo=locationsCombined + "/kiosk-items/"; //add the itemID
-        cartAdd=apiAddon + "order/" + tenantID + businessID + "/orders";
+        cartAdd=apiAddon + "order/" + tenantID + "/" + businessID + "/orders";
     }
 }

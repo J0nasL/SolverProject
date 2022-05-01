@@ -8,6 +8,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Connection file
@@ -19,6 +20,7 @@ public class Connection{
 
     public static final int OK_STATUS=200;
     //public static final int RETRY_CODE=503;
+    public static final int[] RETRY_CODES=new int[]{503};
     public static final int MAX_RETRIES=3;
     public static final boolean PRINT_CONNECTIONS=true;
     private final HttpClient client;
@@ -67,13 +69,17 @@ public class Connection{
             System.out.println("Request to " + uri.toString());
         }
         for (int i=0; i <= MAX_RETRIES; i++){
-            HttpResponse<String> response=null;
             try{
                 HttpRequest request=builder.uri(uri).build();
-                response=client.send(request, HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> response=client.send(request, HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode()!=OK_STATUS && !ignoreStatus){
                     System.out.println("Status code " + response.statusCode());
                     System.out.println(response.body());
+
+                    if(!List.of(RETRY_CODES).contains(response.statusCode())){
+                        return null;
+                    }
+
                 } else {
                     return response;
                 }

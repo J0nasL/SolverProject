@@ -363,6 +363,8 @@ public class ParseJson{
 
                     String itemType=itemJson.getString("itemType"); //TODO make enum
 
+                    boolean isAvailable=itemJson.getBoolean("isAvailableToGuests");
+
                     JSONObject priceObj=itemJson.getJSONObject("price");
                     String itemPrice=priceObj.getString("amount");
 

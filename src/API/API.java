@@ -194,8 +194,8 @@ public class API{
         JSONObject body=new JSONObject();
         body.put("menus", menus);
         body.put("schedule", schedules);
-        //TODO figure out how to put JSON directly into body without having
-        //to convert to string, since it will probably be converted back to JSON by HttpClient
+        /*TODO figure out how to put JSON directly into body without having
+            to convert to string, since it will probably be converted back to JSON by HttpClient*/
         String bodyStr=body.toString();
         //4 other key,value pairs to consider adding if the server returns a 500 error
 
@@ -275,12 +275,18 @@ public class API{
         }
         itemJSON.put("selectedModifiers",modifiers);
 
+        HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.cartAdd), headers,
+                HttpRequest.BodyPublishers.ofString(itemJSON.toString()));
+    }
+
+    public void getWaitTimes(ArrayList<MenuItem> items){
+
+
         /*
         HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.cartAdd), headers,
                 HttpRequest.BodyPublishers.ofString(itemJSON.toString()));
-
-
         */
+
 
     }
 }

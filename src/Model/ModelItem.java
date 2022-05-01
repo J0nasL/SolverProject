@@ -7,7 +7,7 @@ import java.util.ArrayList;
  * and can be purchased and served through OnDemand.
  */
 public abstract class ModelItem extends ModelObject{
-
+    private Boolean isAvailable;
     private String price;
     private int cookTime;
     protected ModelItem(String id){
@@ -34,6 +34,12 @@ public abstract class ModelItem extends ModelObject{
     }
 
     public String getPrice(){return price;}
+
+    public void setAvailability(boolean isAvailable){
+        this.isAvailable=isAvailable;
+    }
+
+    public Boolean getAvailable(){return isAvailable;}
 
     public void setCookTime(int seconds){
         cookTime=seconds;
