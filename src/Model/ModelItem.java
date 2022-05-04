@@ -13,22 +13,6 @@ public abstract class ModelItem extends ModelObject{
     protected ModelItem(String id){
         super(id);
     }
-    public static String SELECTED_STR="✓";
-    public static String UNAVAILABLE_STR=" (Removed)";
-    private boolean selected=false; //whether the user has chosen this option
-
-    public void select(){
-        selected=!selected;
-    }
-
-    public boolean isSelected(){
-        return selected;
-    }
-
-    @Override
-    public String getName(){
-        return super.getName()+(selected?SELECTED_STR:"")+(!isAvailable?UNAVAILABLE_STR:"");
-    }
 
     public void setPrice(String amount){
         price=amount;
@@ -53,7 +37,7 @@ public abstract class ModelItem extends ModelObject{
 
     @Override
     public String toString(){
-        return "ModelItem(price:"+price+", cookTime:"+cookTime+ ", "+ super.toString() + ")";
+        return "ModelItem(price:"+price+", cookTime:"+cookTime+ ", isAvailable:" + isAvailable + ", " + super.toString() + ")";
     }
 
 

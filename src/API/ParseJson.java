@@ -228,6 +228,9 @@ public class ParseJson{
     }
 
     public static void parseMenuItems(HttpResponse<String> response, MenuCategory category){
+        if(response==null){
+            return;
+        }
         if (response.statusCode()==Connection.OK_STATUS){
             JSONArray body=new JSONArray(response.body());
 
@@ -271,6 +274,7 @@ public class ParseJson{
 
                 //cook time
                 int cookTime=object.getInt("kitchenCookTimeSeconds");
+                assert cookTime==0;
 
                 //is available
                 //boolean isDeleted=object.getBoolean("isDeleted");
@@ -353,7 +357,7 @@ public class ParseJson{
 
                     //names
                     String itemName=itemJson.getString("name");
-                    String itemDisplayText=itemJson.getString("displayText");
+                    String itemDisplayText=itemJson.getString("displayText"); //This is the name shown to the client
                     String itemKitchenDisplayText=itemJson.getString("kitchenDisplayText");
                     String itemKitchenVideoLabel=itemJson.getString("kitchenVideoLabel");
                     String itemKpText=itemJson.getString("kpText");
@@ -366,6 +370,7 @@ public class ParseJson{
                     );
 
                     int itemCookTime=itemJson.getInt("kitchenCookTimeSeconds");
+                    assert itemCookTime==0;
 
                     String itemType=itemJson.getString("itemType"); //TODO make enum
 
@@ -378,7 +383,7 @@ public class ParseJson{
 
                     targetItem.setPrice(itemPrice);
                     targetItem.setCookTime(itemCookTime);
-                    targetItem.setName(itemName);
+                    targetItem.setName(itemDisplayText);
                     targetItem.setAvailability(isAvailable);
                 }
 
@@ -400,6 +405,33 @@ public class ParseJson{
             String orderState=details.getString("orderNumber");
             assert orderState=="OPEN";
 
+        }
+    }
+
+    public static void parseWaitTimes(HttpResponse<String> response){
+        if (response.statusCode()==Connection.OK_STATUS){
+            JSONObject body=new JSONObject(response.body());
+
+            System.out.println(body);
+
+            if (body.has("minutes")){
+                //if variance is disabled
+                int time=body.getInt("minutes");
+                System.out.println("Wait time: " + time + " minutes");
+
+            } else if (body.has("etf")){
+                //if there is a problem with formatting
+                System.out.println("Error fetching wait time");
+            }else {
+                //if variance is enabled
+                JSONObject minTime=body.getJSONObject("minTime");
+                int min=minTime.getInt("minutes");
+
+                JSONObject maxTime=body.getJSONObject("maxTime");
+                int max=maxTime.getInt("minutes");
+
+                System.out.println("Wait time: " + min + "-" + max + " minutes");
+            }
         }
     }
 }

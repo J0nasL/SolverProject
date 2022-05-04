@@ -24,7 +24,9 @@ public class ConnectionURI{
     public String menuAddon;
     public String getItems;
     public String getItemInfo;
+    public String orderSnippet;
     public String cartAdd;
+    public String waitTimes;
 
     public final String businessID;
     public final String tenantID;
@@ -61,6 +63,8 @@ public class ConnectionURI{
         menuAddon="/menus/";
         getItems=locationsCombined + "/kiosk-items/get-items";
         getItemInfo=locationsCombined + "/kiosk-items/"; //add the itemID
-        cartAdd=apiAddon + "order/" + tenantID + "/" + businessID + "/orders";
+        orderSnippet="/api/order/" + tenantID + "/" + businessID;
+        cartAdd=orderSnippet + "/orders";
+        waitTimes=orderSnippet + "/getWaitTimeForItems";
     }
 }

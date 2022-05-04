@@ -18,18 +18,16 @@ public abstract class ModelObject implements Comparable<ModelObject>{
     @Nullable
     private String name;
 
-
     protected ModelObject(@NotNull String id){
         this.id=id;
     }
-
 
     /**
      * Returns the name of this object
      */
     public @Nullable String getName(){
         if(name==null){
-            return "removed";
+            return "null";
         }
         return name;
     }
@@ -40,7 +38,6 @@ public abstract class ModelObject implements Comparable<ModelObject>{
     public void setName(@Nullable String name){
         this.name=name;
     }
-
 
     /**
      * Returns a string representation of the given instance
@@ -107,5 +104,10 @@ public abstract class ModelObject implements Comparable<ModelObject>{
 
     public void testChange(){
         notifyListeners("test change on " + this);
+    }
+
+    @Override
+    public int hashCode(){
+        return id.hashCode();
     }
 }

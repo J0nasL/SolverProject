@@ -226,7 +226,7 @@ public class API{
         //body.put("profitCenterId", v.profitCenterID);
         //body.put("storePriceLevel", "1");
         //body.put("currencyUnit", "USD");
-        //TODO figure out how to leave as JSON
+
         HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.getItems), headers,
                 HttpRequest.BodyPublishers.ofString(body.toString()));
 
@@ -252,6 +252,8 @@ public class API{
         JSONObject price=new JSONObject();
         price.put("amount",menuItem.getPrice());
         itemJSON.put("price",price);
+
+        //itemJSON.put("splInstruction",""); //TODO implement special instructions
 
         JSONArray modifiers=new JSONArray();
 
@@ -281,12 +283,41 @@ public class API{
 
     public void getWaitTimes(ArrayList<MenuItem> items){
 
+        assert !items.isEmpty();
 
-        /*
-        HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.cartAdd), headers,
-                HttpRequest.BodyPublishers.ofString(itemJSON.toString()));
-        */
+        JSONObject reqJSON=new JSONObject();
+        JSONArray cartItems=new JSONArray();
 
+        for(MenuItem item: items){
+
+            JSONObject thisItem=new JSONObject();
+
+            /*"childGroups": [],
+            "options": [],
+            "attributes": []*/
+            //TODO add these fields if any of them are non-empty and affect cook time
+
+            thisItem.put("kitchenVideoId",item.id);
+
+            JSONArray childGroups=new JSONArray();
+            thisItem.put("childGroups",childGroups);
+
+            cartItems.put(thisItem);
+        }
+
+        reqJSON.put("varianceEnabled", true); //whether to return 2 wait times, a min and max
+        reqJSON.put("variancePercentage", 10); //how much to skew the min and max away from the wait time
+
+        reqJSON.put("cartItems",cartItems);
+
+        System.out.println(reqJSON);
+
+        HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.waitTimes), headers,
+                HttpRequest.BodyPublishers.ofString(reqJSON.toString()));
+
+        ParseJson.parseWaitTimes(response);
 
     }
+
+
 }

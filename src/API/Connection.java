@@ -20,7 +20,8 @@ public class Connection{
 
     public static final int OK_STATUS=200;
     //public static final int RETRY_CODE=503;
-    public static final int[] RETRY_CODES=new int[]{503};
+    public static final int RETRY_CODE=503;
+    public static final int OLD_TOKEN_CODE=401;
     public static final int MAX_RETRIES=3;
     public static final boolean PRINT_CONNECTIONS=true;
     private final HttpClient client;
@@ -72,22 +73,29 @@ public class Connection{
             try{
                 HttpRequest request=builder.uri(uri).build();
                 HttpResponse<String> response=client.send(request, HttpResponse.BodyHandlers.ofString());
-                if (response.statusCode()!=OK_STATUS && !ignoreStatus){
-                    System.out.println("Status code " + response.statusCode());
-                    System.out.println(response.body());
+                int status=response.statusCode();
 
-                    if(!List.of(RETRY_CODES).contains(response.statusCode())){
+                if (status!=OK_STATUS && !ignoreStatus){
+                    if(status==RETRY_CODE){
+                        System.out.println("Connection lost.\nRetrying...");
+
+                    } else if (status==OLD_TOKEN_CODE){
+                        //TODO update the token
+                        System.out.println("Your login token is out of date");
+                        System.out.println("Restart the application to get a new token");
+                    } else {
+                        System.out.println("Status code " + status);
+                        System.out.println(response.body());
                         return null;
                     }
-
                 } else {
                     return response;
                 }
             } catch (IOException | InterruptedException e){
                 e.printStackTrace();
             }
-            System.out.println("Retrying...");
         }
+        assert false;
         return null;
     }
 }
