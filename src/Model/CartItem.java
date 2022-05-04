@@ -94,10 +94,12 @@ public class CartItem{
      * @return string representation of selected objects
      */
     public String getContents(boolean compact){
+
+        //TODO sort these
         StringBuilder b=new StringBuilder();
 
         for (OptionGroup group: savedChildren.keySet()){
-            b.append(group.getName()).append(": ");
+            b.append(group.getName());//.append(": ");
 
             boolean firstItem=false;
             for (OptionItem item: savedChildren.get(group)){

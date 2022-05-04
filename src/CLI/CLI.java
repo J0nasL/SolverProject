@@ -3,6 +3,7 @@ package CLI;
 import API.API;
 import Model.*;
 import Storage.Storage;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.text.html.Option;
@@ -14,14 +15,15 @@ import java.util.Objects;
 public class CLI implements Listener<ModelObject, String>{
 
     private String VendorIDs;
+    private final ArrayList<CartItem> cart=new ArrayList<>();
 
     private static API api;
     private static Storage storage;
     private static boolean DEBUG=false;
     private static final int NUMBER_OFFSET=1;
-
     public enum State{
         BROWSE, BACK, QUIT, CART, CHECKOUT;
+
     }
 
     private State curState=State.BROWSE;
@@ -132,7 +134,6 @@ public class CLI implements Listener<ModelObject, String>{
                     if (i==null){
                         continue;
                     }
-                    //api.addToCart(i); //for testing
                     api.getItemOptions(i);
                     while (isBrowsing()){
                         OptionGroup g=(OptionGroup) chooseObject(i);
@@ -153,8 +154,24 @@ public class CLI implements Listener<ModelObject, String>{
     }
 
     private void cart(){
-        System.out.println("Cart");
-        curState=State.QUIT;
+        while(curState==State.CART){
+            System.out.println("\nCart:");
+
+            if(cart.isEmpty()){
+                System.out.println("Cart is empty\n");
+                curState=State.BROWSE;
+            } else{
+
+                System.out.println("Select an item to remove");
+                System.out.println("Enter " + Choice.CHECKOUT + " to continue to checkout");
+
+                CartItem choice=chooseCartItem(cart);
+
+                if (choice!=null){
+                    //TODO remove from cart
+                }
+            }
+        }
     }
 
     private void checkout(){
@@ -164,7 +181,7 @@ public class CLI implements Listener<ModelObject, String>{
 
     private void objectPrint(ArrayList<ModelObject> objects, int numberOffset){
         if (objects.size()==0){
-            System.out.println("none");
+            System.out.println("None");
         } else{
             for (int i=0; i < objects.size(); i++){
                 String name=objects.get(i).getName();
@@ -181,7 +198,9 @@ public class CLI implements Listener<ModelObject, String>{
         switch (res.curChoice){
             case ADD_CART:
                 if (parent instanceof MenuItem){
-                    api.addToCart((MenuItem) parent);
+                    MenuItem item=(MenuItem) parent;
+                    api.addToCart(item);
+                    cart.add(new CartItem(item));
                     //TODO quantity option
                     System.out.println("Added" + parent.getName() + "to cart");
                 } else{
@@ -287,6 +306,22 @@ public class CLI implements Listener<ModelObject, String>{
 
         objectPrint(items, NUMBER_OFFSET);
         Integer choice=handleChoice(parent, NUMBER_OFFSET, items.size() + NUMBER_OFFSET);
+        if (choice==null){
+            return null;
+        }
+        return items.get(choice);
+    }
+
+    @Nullable
+    private CartItem chooseCartItem(@NotNull ArrayList<CartItem> items){
+        //this loop functions like objectPrint
+        for (int i=NUMBER_OFFSET; i < items.size()+NUMBER_OFFSET-1; i++){
+            CartItem item= items.get(i);
+            System.out.println(i+": "+item.getContents(false));
+            //System.out.println(item); //debug
+        }
+
+        Integer choice=handleChoice(null, NUMBER_OFFSET, items.size() + NUMBER_OFFSET);
         if (choice==null){
             return null;
         }
