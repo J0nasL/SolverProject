@@ -5,11 +5,7 @@ import Model.*;
 import Storage.Storage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import javax.swing.text.html.Option;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 public class CLI implements Listener<ModelObject, String>{
@@ -21,6 +17,7 @@ public class CLI implements Listener<ModelObject, String>{
     private static Storage storage;
     private static boolean DEBUG=false;
     private static final int NUMBER_OFFSET=1;
+    private static boolean accessClosedVendor=false;
     public enum State{
         BROWSE, BACK, QUIT, CART, CHECKOUT;
 
@@ -39,6 +36,9 @@ public class CLI implements Listener<ModelObject, String>{
             }
         }
         CLI inst=new CLI();
+        if(api==null){
+            return;
+        }
 
         if (DEBUG){
             System.out.println("DEBUG mode is ON");
@@ -60,16 +60,13 @@ public class CLI implements Listener<ModelObject, String>{
         }
         String token=API.getToken(idStr);
         if (token==null){
-            token=API.getToken(idStr);
-        }
-        if (token!=null){
+            System.out.println("Could not get access token");
+        } else{
             System.out.println("Got access token");
             //API.getIDs(token);
             //TODO store ids for later?
             api=API.getInstance(token);
             assert api!=null;
-        } else{
-            System.out.println("Could not get access token");
         }
     }
 
@@ -84,22 +81,14 @@ public class CLI implements Listener<ModelObject, String>{
     private void controller(){
         while (true){
             switch (curState){
-                case BROWSE:
-                    browsing();
-                    break;
-                case CHECKOUT:
-                    checkout();
-                    break;
-                case BACK:
-                    //if user hit back at vendor level
-                    browsing();
-                    break;
-                case CART:
-                    cart();
-                    break;
-                case QUIT:
+                case BROWSE -> browsing();
+                case CHECKOUT -> checkout();
+                case BACK -> browsing(); //if user hit back at vendor level
+                case CART -> cart();
+                case QUIT -> {
                     System.out.println("Exiting.");
                     return;
+                }
             }
         }
     }
@@ -155,28 +144,56 @@ public class CLI implements Listener<ModelObject, String>{
 
     private void cart(){
         while(curState==State.CART){
-            System.out.println("\nCart:");
-
             if(cart.isEmpty()){
                 System.out.println("Cart is empty\n");
                 curState=State.BROWSE;
             } else{
-
+                System.out.println("\nCart:");
                 System.out.println("Select an item to remove");
                 System.out.println("Enter " + Choice.CHECKOUT + " to continue to checkout");
 
-                CartItem choice=chooseCartItem(cart);
+                Integer choice=chooseCartItemIndex(cart);
 
                 if (choice!=null){
-                    //TODO remove from cart
+                    //remove from cart
+                    cart.remove((int)choice);
                 }
             }
         }
     }
 
     private void checkout(){
-        System.out.println("Checkout");
-        curState=State.QUIT;
+        System.out.println("\nCheckout");
+        boolean isPrompting=true;
+        while(isPrompting){
+            String fname=Choice.getLine("Enter first name");
+            String lname=Choice.getLine("Enter first character of last name");
+
+            if(!fname.isEmpty() && lname.length()==1){
+                isPrompting=false;
+            } else {
+                System.out.println("Invalid name");
+            }
+        }
+        isPrompting=true;
+        while(isPrompting){
+            //TODO replace with shibboleth query
+            int id=Choice.chooseInt("Enter student UUID");
+
+            if(id!=Choice.ERROR_INT && id>0){
+                isPrompting=false;
+            } else {
+                System.out.println("Invalid UUID");
+            }
+        }
+
+        //TODO continue checkout flow here
+
+        if(curState==State.BACK){
+            curState=State.CART;
+        } else {
+            curState=State.QUIT;
+        }
     }
 
     private void objectPrint(ArrayList<ModelObject> objects, int numberOffset){
@@ -266,16 +283,23 @@ public class CLI implements Listener<ModelObject, String>{
         System.out.println("Open vendors:");
         objectPrint(openVendors, NUMBER_OFFSET);
         System.out.println("\nClosed vendors:");
-        objectPrint(closedVendors, NUMBER_OFFSET + openVendors.size());
+        if(accessClosedVendor){
+            objectPrint(closedVendors, NUMBER_OFFSET + openVendors.size());
+        }
 
+        Integer res;
         while (true){
-            Integer res=handleChoice(null, NUMBER_OFFSET, closedVendors.size() + openVendors.size());
+            if(accessClosedVendor){
+                res=handleChoice(null, NUMBER_OFFSET, closedVendors.size() + openVendors.size());
+            } else {
+                res=handleChoice(null, NUMBER_OFFSET, openVendors.size());
+            }
             if (res==null){
                 return null;
             }
             if (res < openVendors.size()){
                 return (Vendor) openVendors.get(res);
-            } else if (res < openVendors.size() + closedVendors.size()){
+            } else if (accessClosedVendor && res < openVendors.size() + closedVendors.size()){
                 res-=openVendors.size();
                 return (Vendor) closedVendors.get(res);
             }
@@ -313,7 +337,7 @@ public class CLI implements Listener<ModelObject, String>{
     }
 
     @Nullable
-    private CartItem chooseCartItem(@NotNull ArrayList<CartItem> items){
+    private Integer chooseCartItemIndex(@NotNull ArrayList<CartItem> items){
         //this loop functions like objectPrint
         for (int i=NUMBER_OFFSET; i < items.size()+NUMBER_OFFSET-1; i++){
             CartItem item= items.get(i);
@@ -321,11 +345,7 @@ public class CLI implements Listener<ModelObject, String>{
             //System.out.println(item); //debug
         }
 
-        Integer choice=handleChoice(null, NUMBER_OFFSET, items.size() + NUMBER_OFFSET);
-        if (choice==null){
-            return null;
-        }
-        return items.get(choice);
+        return handleChoice(null, NUMBER_OFFSET, items.size() + NUMBER_OFFSET);
     }
 
     private void debug(){

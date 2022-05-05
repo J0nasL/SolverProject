@@ -43,8 +43,7 @@ public class Choice{
                 return ERROR_INT;
             }
             try{
-                int resInt=Integer.parseInt(res);
-                return resInt;
+                return Integer.parseInt(res);
             } catch (NumberFormatException e){
                 System.out.println(INVALID_STR);
             }

@@ -27,6 +27,7 @@ public class ConnectionURI{
     public String orderSnippet;
     public String cartAdd;
     public String waitTimes;
+    public String revenueCategory;
 
     public final String businessID;
     public final String tenantID;
@@ -66,5 +67,6 @@ public class ConnectionURI{
         orderSnippet="/api/order/" + tenantID + "/" + businessID;
         cartAdd=orderSnippet + "/orders";
         waitTimes=orderSnippet + "/getWaitTimeForItems";
+        revenueCategory=locationsCombined + "/getRevenueCategory";
     }
 }

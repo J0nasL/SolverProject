@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import Model.*;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -36,7 +37,9 @@ public class API{
     //Statics
 
     public static void testConnection() throws APIException{
-        if (connection.get(ConnectionURI.getURI(ConnectionURI.SITE_DOWN), new String[]{}).statusCode()!=Connection.OK_STATUS){
+        HttpResponse<String> response=connection.get(ConnectionURI.getURI(ConnectionURI.SITE_DOWN), new String[]{});
+
+        if (response==null || response.statusCode()!=Connection.OK_STATUS){
             throw new APIException("Cannot connect to host " + ConnectionURI.ON_DEMAND);
         }
     }
@@ -44,7 +47,9 @@ public class API{
     public static String getToken(String id_str){
         String[] headers=new String[]{"X-NewRelic-ID", id_str};
         HttpResponse<String> response=connection.put(ConnectionURI.getURI(ConnectionURI.LOGIN), headers);
-
+        if(response==null){
+            return null;
+        }
         if (response.statusCode()==Connection.OK_STATUS){
             Map<String, List<String>> respHeaders=response.headers().map();
             //String refresh_token = respHeaders.get("refresh-token").get(0);
@@ -60,11 +65,17 @@ public class API{
      */
     public static String[][] getConfig(String token){
         String[] headers=new String[]{"Authorization", "Bearer " + token};
+
+
+
         HttpResponse<String> response=connection.get(ConnectionURI.getURI(ConnectionURI.CONFIG), headers);
 
+        if(response==null){
+            return null;
+        }
         if (response.statusCode()==Connection.OK_STATUS){
-
             JSONObject json=new JSONObject(response.body());
+
             String businessID=json.get("contextID").toString();
             String contextID=json.get("tenantID").toString();
             JSONArray storeList=(JSONArray) json.get("storeList");
@@ -103,19 +114,26 @@ public class API{
     }
 
     /**
-     * Slow, takes ~7 seconds to return
+     * Populates provided vendors with data from the locations document.
+     * If a vendor exists in the locations document and is not provided in vendors,
+     * it will be added to the list.
+     * Slow, takes ~7 seconds to return.
      *
-     * @return Array of vendors with no children
+     * @param vendors Array of vendors to populate
      */
-    public void getLocations(ArrayList<Vendor> vendors){
-        if (vendors==null){
-            vendors=new ArrayList<>();
-        }
+    public void getLocations(@NotNull ArrayList<Vendor> vendors){
         HttpResponse<String> response=connection.get(ConnectionURI.getURI(uri.locationsBusiness), headers);
         ParseJson.parseLocations(response, vendors);
     }
 
-    public void getLocationsIndividually(ArrayList<Vendor> vendors){
+    /**
+     * This method is designed as a way of avoiding access of the locations document.
+     * Uses asynchronous requests to retrieve similar data in less time.
+     * Only the provided list of vendors will be checked
+     *
+     * @param vendors Array of vendors to populate
+     */
+    public void getLocationsIndividually(@NotNull ArrayList<Vendor> vendors){
         //TODO change this to access concepts, because main page has no isOpen
         //if the result is an error, the vendor is not open
         ArrayList<Thread> threads=new ArrayList<>();
@@ -147,8 +165,6 @@ public class API{
      * Retrieves information from the vendor main api page
      * Gets vendor name and the current menu id
      * Note: Does not set isOpen property
-     *
-     * @return new Vendor instance
      */
     public void getVendorMain(Vendor vendor){
         HttpResponse<String> response=connection.post(ConnectionURI.getURI(uri.locationMain + "/" + vendor.id), headers,
@@ -319,5 +335,10 @@ public class API{
 
     }
 
+    public void getRevenueCategory(){
+        HttpResponse<String> response=connection.get(ConnectionURI.getURI(uri.revenueCategory), headers);
+
+        //ParseJson.parse(response);
+    }
 
 }

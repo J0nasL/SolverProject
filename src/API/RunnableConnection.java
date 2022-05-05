@@ -1,5 +1,8 @@
 package API;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -16,7 +19,7 @@ public class RunnableConnection implements Runnable{
     private HttpRequest.BodyPublisher curBody;
     public HttpResponse<String> response;
 
-    RunnableConnection(method m, URI uri, String[] headers, HttpRequest.BodyPublisher body){
+    RunnableConnection(@NotNull method m, @NotNull URI uri, @Nullable String[] headers, @Nullable HttpRequest.BodyPublisher body){
         curMethod=m;
         curURI=uri;
         curHeaders=headers;

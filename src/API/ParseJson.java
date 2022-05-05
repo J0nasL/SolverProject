@@ -434,4 +434,10 @@ public class ParseJson{
             }
         }
     }
+
+    public static void parseRevenueCategory(HttpResponse<String> response){
+        if (response.statusCode()==Connection.OK_STATUS){
+            JSONObject body=new JSONObject(response.body());
+        }
+    }
 }

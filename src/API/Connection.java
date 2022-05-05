@@ -2,6 +2,7 @@ package API;
 
 
 import java.io.*;
+import java.net.ConnectException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -70,32 +71,40 @@ public class Connection{
             System.out.println("Request to " + uri.toString());
         }
         for (int i=0; i <= MAX_RETRIES; i++){
+
+            HttpRequest request=builder.uri(uri).build();
+            HttpResponse<String> response;
+
             try{
-                HttpRequest request=builder.uri(uri).build();
-                HttpResponse<String> response=client.send(request, HttpResponse.BodyHandlers.ofString());
-                int status=response.statusCode();
-
-                if (status!=OK_STATUS && !ignoreStatus){
-                    if(status==RETRY_CODE){
-                        System.out.println("Connection lost.\nRetrying...");
-
-                    } else if (status==OLD_TOKEN_CODE){
-                        //TODO update the token
-                        System.out.println("Your login token is out of date");
-                        System.out.println("Restart the application to get a new token");
-                    } else {
-                        System.out.println("Status code " + status);
-                        System.out.println(response.body());
-                        return null;
-                    }
-                } else {
-                    return response;
-                }
+                response=client.send(request, HttpResponse.BodyHandlers.ofString());
+            } catch (ConnectException e){
+                System.out.println("ConnectionException:\nCannot connect to " + ConnectionURI.ON_DEMAND);
+                return null;
             } catch (IOException | InterruptedException e){
                 e.printStackTrace();
+                return null;
             }
+
+            int status=response.statusCode();
+
+            if (status!=OK_STATUS && !ignoreStatus){
+                if (status==RETRY_CODE){
+                    System.out.println("Connection lost.\nRetrying...");
+
+                } else if (status==OLD_TOKEN_CODE){
+                    //TODO update the token
+                    System.out.println("Your login token is out of date");
+                    System.out.println("Restart the application to get a new token");
+                } else{
+                    System.out.println("Status code " + status);
+                    System.out.println(response.body());
+                    return null;
+                }
+            } else{
+                return response;
+            }
+
         }
-        assert false;
         return null;
     }
 }
